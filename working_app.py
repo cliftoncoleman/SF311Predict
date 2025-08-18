@@ -98,11 +98,13 @@ def create_simple_bar_chart(data: pd.DataFrame) -> go.Figure:
 def load_working_data():
     """Load data using the working pipeline"""
     try:
-        with st.spinner("Loading SF311 data with enhanced pipeline..."):
-            # Use the working pipeline with end-of-year forecasting
-            predictions = pipeline.run_full_fixed_pipeline(
-                days_back=1825,  # 5 years for robust training
-                prediction_days=None  # This will forecast to end of year
+        with st.spinner("Loading SF311 data with 5-year training pipeline..."):
+            # Create fresh pipeline instance to bypass any caching issues
+            fresh_pipeline = FixedSF311Pipeline()
+            # Use 5 years of training data for robust modeling
+            predictions = fresh_pipeline.run_full_fixed_pipeline(
+                days_back=1825,  # 5 years for robust training  
+                prediction_days=14  # 14-day forecast
             )
             
             if not predictions.empty:
