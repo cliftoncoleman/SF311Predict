@@ -344,10 +344,26 @@ def main():
             
             # Neighborhood filter
             st.subheader("Neighborhoods")
+            
+            # Add select all button
+            col1, col2 = st.columns([1, 1])
+            with col1:
+                if st.button("Select All", help="Select all neighborhoods"):
+                    st.session_state.selected_all_neighborhoods = True
+            with col2:
+                if st.button("Select Priority", help="Select priority SF areas"):
+                    st.session_state.selected_all_neighborhoods = False
+            
+            # Determine default selection
+            if st.session_state.get('selected_all_neighborhoods', False):
+                default_selection = st.session_state.working_neighborhoods
+            else:
+                default_selection = st.session_state.working_neighborhoods[:5]
+            
             selected_neighborhoods = st.multiselect(
                 "Select neighborhoods:",
                 options=st.session_state.working_neighborhoods,
-                default=st.session_state.working_neighborhoods[:5],  # Priority SF neighborhoods
+                default=default_selection,
                 help="Default selection includes key SF areas: SOMA, Tenderloin, Mission Bay, Mission, Bayview"
             )
             
