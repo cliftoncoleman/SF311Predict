@@ -187,7 +187,7 @@ class FixedSF311Pipeline:
             return pd.DataFrame(empty_cols)
         return pd.concat(frames, ignore_index=True)
 
-    def fetch_historical_data(self, start_days: int = 1095) -> pd.DataFrame:  # 3 years default
+    def fetch_historical_data(self, start_days: int = 1825) -> pd.DataFrame:  # 5 years default
         """Fetch historical SF311 data with enhanced neighborhood coalescing"""
         today = dt.date.today()
         start_date = today - dt.timedelta(days=start_days)

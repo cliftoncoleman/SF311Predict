@@ -98,7 +98,7 @@ def load_working_data():
         with st.spinner("Loading SF311 data with enhanced pipeline..."):
             # Use the working pipeline with end-of-year forecasting
             predictions = pipeline.run_full_fixed_pipeline(
-                days_back=365,  # Reduced for faster loading
+                days_back=1825,  # 5 years for robust training
                 prediction_days=None  # This will forecast to end of year
             )
             
