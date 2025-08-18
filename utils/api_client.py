@@ -66,22 +66,13 @@ class APIClient:
     
     def get_predictions(self, start_date: str = None, end_date: str = None) -> Optional[pd.DataFrame]:
         """Fetch street and sidewalk cleaning predictions"""
-        # If no API configured, return demo data
-        if not self.base_url or self.base_url == "http://localhost:8000":
-            return self._get_demo_predictions()
-            
-        params = {
-            "service_type": "Street and Sidewalk Cleaning"
-        }
-        
-        if start_date:
-            params["start_date"] = start_date
-        if end_date:
-            params["end_date"] = end_date
-            
-        data = self._make_request("api/predictions", params)
-        
-        if data is None:
+        # Use integrated data pipeline instead of external API
+        try:
+            from data_pipeline import SF311DataPipeline
+            pipeline = SF311DataPipeline()
+            return pipeline.run_full_pipeline()
+        except Exception as e:
+            st.error(f"Error running prediction pipeline: {str(e)}")
             return self._get_demo_predictions()  # Fallback to demo data
             
         try:
@@ -117,13 +108,17 @@ class APIClient:
     
     def get_neighborhoods(self) -> Optional[List[str]]:
         """Fetch list of available neighborhoods"""
-        # If no API configured, return demo neighborhoods
-        if not self.base_url or self.base_url == "http://localhost:8000":
-            return self._get_demo_neighborhoods()
-            
-        data = self._make_request("api/neighborhoods")
-        
-        if data is None:
+        # Use integrated data pipeline to get actual neighborhood list
+        try:
+            from data_pipeline import SF311DataPipeline
+            pipeline = SF311DataPipeline()
+            predictions = pipeline.run_full_pipeline()
+            if not predictions.empty and 'neighborhood' in predictions.columns:
+                return sorted(predictions['neighborhood'].unique().tolist())
+            else:
+                return self._get_demo_neighborhoods()
+        except Exception as e:
+            st.error(f"Error getting neighborhoods: {str(e)}")
             return self._get_demo_neighborhoods()  # Fallback to demo data
             
         try:
