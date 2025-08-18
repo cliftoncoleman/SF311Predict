@@ -26,18 +26,7 @@ if 'last_working_refresh' not in st.session_state:
 def get_working_pipeline():
     return FixedSF311Pipeline()
 
-def clear_cache_and_reload():
-    """Clear all cached resources and reload"""
-    st.cache_data.clear()
-    st.cache_resource.clear()
-    # Clear session state to force fresh data loading
-    if 'working_data' in st.session_state:
-        del st.session_state.working_data
-    if 'working_neighborhoods' in st.session_state:
-        del st.session_state.working_neighborhoods
-    if 'last_working_refresh' in st.session_state:
-        del st.session_state.last_working_refresh
-    st.rerun()
+
 
 def get_data_processor():
     return DataProcessor()
@@ -172,92 +161,9 @@ def load_working_data():
         st.session_state.working_neighborhoods = sorted(demo_data['neighborhood'].unique())
         st.session_state.last_working_refresh = datetime.now()
 
-def show_historical_validation():
-    """Show historical vs predicted validation"""
-    try:
-        with st.spinner("Loading historical validation data..."):
-            # Create fresh pipeline for validation to avoid interference
-            validation_pipeline = FixedSF311Pipeline()
-            historical_data = validation_pipeline.get_historical_vs_predicted(days_back=30)
-            
-            if not historical_data.empty:
-                st.session_state.historical_data = historical_data
-                st.success(f"Loaded {len(historical_data)} historical validation records from last 30 days")
-                
-                # Show basic stats
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    avg_actual = historical_data['actual_requests'].mean()
-                    st.metric("Avg Daily Actual", f"{avg_actual:.1f}")
-                with col2:
-                    total_actual = historical_data['actual_requests'].sum()
-                    st.metric("Total Actual (30d)", f"{total_actual:,.0f}")
-                with col3:
-                    neighborhoods = historical_data['neighborhood'].nunique()
-                    st.metric("Neighborhoods", neighborhoods)
-                
-                # Filter historical data by selected neighborhoods if available
-                if 'working_neighborhoods' in st.session_state:
-                    # Use the same neighborhoods as selected in main view
-                    priority_neighborhoods = [
-                        "South of Market", "Tenderloin", "Mission Bay", 
-                        "Mission", "Bayview Hunters Point"
-                    ]
-                    
-                    # Filter to priority neighborhoods that exist in historical data
-                    available_neighborhoods = historical_data['neighborhood'].unique()
-                    filtered_neighborhoods = [n for n in priority_neighborhoods if n in available_neighborhoods]
-                    
-                    if filtered_neighborhoods:
-                        filtered_historical = historical_data[
-                            historical_data['neighborhood'].isin(filtered_neighborhoods)
-                        ]
-                        
-                        if not filtered_historical.empty:
-                            st.subheader("Priority Neighborhoods Historical Data")
-                            st.write(f"Showing data for: {', '.join(filtered_neighborhoods)}")
-                            
-                            # Create simple historical chart
-                            fig = create_historical_chart(filtered_historical)
-                            st.plotly_chart(fig, use_container_width=True)
-                        
-            else:
-                st.error("No historical validation data available")
-                
-    except Exception as e:
-        st.error(f"Error loading historical data: {str(e)}")
 
-def create_historical_chart(historical_data: pd.DataFrame) -> go.Figure:
-    """Create historical data visualization"""
-    fig = go.Figure()
-    
-    if historical_data.empty:
-        fig.add_annotation(
-            text="No historical data available",
-            xref="paper", yref="paper",
-            x=0.5, y=0.5, showarrow=False
-        )
-        return fig
-    
-    # Group by neighborhood and create traces
-    for neighborhood in historical_data['neighborhood'].unique():
-        nbhd_data = historical_data[historical_data['neighborhood'] == neighborhood]
-        fig.add_trace(go.Scatter(
-            x=nbhd_data['date'],
-            y=nbhd_data['actual_requests'],
-            mode='lines+markers',
-            name=neighborhood,
-            hovertemplate='%{y:.0f} actual requests<extra></extra>'
-        ))
-    
-    fig.update_layout(
-        title="Historical Actual Requests (Last 30 Days)",
-        xaxis_title="Date",
-        yaxis_title="Actual Requests",
-        height=500
-    )
-    
-    return fig
+
+
 
 def create_demo_data():
     """Create demo data for testing"""
@@ -338,21 +244,7 @@ def main():
         if st.button("Load Enhanced Data", type="primary"):
             load_working_data()
         
-        if st.button("Show Historical Validation", help="Compare recent predictions with actual data"):
-            show_historical_validation()
-        
-        if st.button("🔄 Clear Cache & Reload", help="Force reload with updated pipeline configuration"):
-            clear_cache_and_reload()
-        
-        if st.button("🔄 Force 5-Year Data Reload", help="Force reload with 5 years of data, clearing all caches"):
-            st.cache_data.clear()
-            st.cache_resource.clear()
-            # Clear session state
-            for key in ['working_data', 'working_neighborhoods', 'last_working_refresh']:
-                if key in st.session_state:
-                    del st.session_state[key]
-            st.info("Cache cleared. Loading fresh 5-year dataset...")
-            load_working_data()
+
         
         if st.session_state.last_working_refresh:
             st.caption(f"Last updated: {st.session_state.last_working_refresh.strftime('%Y-%m-%d %H:%M:%S')}")
@@ -564,10 +456,7 @@ def main():
         mime="text/csv"
     )
     
-    # Historical data comparison disabled to prevent interference with 5-year training
-    # Use "Show Historical Validation" button instead for manual comparison
-    st.markdown("---")
-    st.info("💡 **Tip**: Use the 'Show Historical Validation' button in the sidebar to compare predictions with recent historical data without interfering with the 5-year training process.")
+
 
 if __name__ == "__main__":
     main()
