@@ -606,6 +606,33 @@ class FixedSF311Pipeline:
             "generated_at": timestamp
         }
     
+    def get_historical_vs_predicted(self, days_back: int = 90) -> pd.DataFrame:
+        """Get historical actual data for comparison with predictions"""
+        try:
+            # Fetch recent historical data
+            historical_data = self.fetch_historical_data(start_days=days_back + 30)
+            
+            if historical_data.empty:
+                return pd.DataFrame()
+            
+            # Get the last N days as "actual" data
+            end_date = historical_data['date'].max()
+            start_date = end_date - pd.Timedelta(days=days_back)
+            
+            historical_data_dates = pd.to_datetime(historical_data['date'])
+            mask = (historical_data_dates >= start_date) & (historical_data_dates <= end_date)
+            recent_data = historical_data[mask].copy()
+            
+            # Rename for clarity
+            recent_data = recent_data.rename(columns={'cases': 'actual_requests'})
+            recent_data['data_type'] = 'actual'
+            
+            return recent_data
+            
+        except Exception as e:
+            print(f"Error fetching historical data: {e}")
+            return pd.DataFrame()
+
     def run_full_fixed_pipeline(self, 
                                days_back: int = 1095,
                                prediction_days: int = 30) -> pd.DataFrame:
