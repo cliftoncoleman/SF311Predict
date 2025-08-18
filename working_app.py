@@ -253,7 +253,8 @@ def main():
             aggregation_level = st.selectbox(
                 "Aggregation Level:",
                 ["daily", "weekly", "monthly"],
-                index=0
+                index=0,
+                help="Daily: Shows 1 week • Weekly: Shows 4 weeks • Monthly: Shows full forecast period"
             )
         else:
             st.info("Click 'Load Enhanced Data' to get started!")
@@ -269,15 +270,39 @@ def main():
     
     # Filter data
     filtered_data = st.session_state.working_data.copy()
+    filtered_data['date'] = pd.to_datetime(filtered_data['date'])
     
+    # Apply intelligent time filtering based on aggregation level
+    if aggregation_level == "daily":
+        # Daily: show only next 7 days for readability
+        start_date = filtered_data['date'].min()
+        end_date = start_date + timedelta(days=7)
+        mask = (filtered_data['date'] >= start_date) & (filtered_data['date'] <= end_date)
+        filtered_data = filtered_data[mask]
+        time_info = "Showing next 7 days for daily view"
+    elif aggregation_level == "weekly":
+        # Weekly: show next 4 weeks (1 month)
+        start_date = filtered_data['date'].min()
+        end_date = start_date + timedelta(days=28)
+        mask = (filtered_data['date'] >= start_date) & (filtered_data['date'] <= end_date)
+        filtered_data = filtered_data[mask]
+        time_info = "Showing next 4 weeks for weekly view"
+    else:  # monthly
+        # Monthly: show all available data (to end of year)
+        time_info = "Showing full forecast period for monthly view"
+    
+    # Override with user date selection if provided
     if date_range and len(date_range) == 2:
         start_date, end_date = date_range
-        filtered_data['date'] = pd.to_datetime(filtered_data['date'])
         mask = (filtered_data['date'].dt.date >= start_date) & (filtered_data['date'].dt.date <= end_date)
         filtered_data = filtered_data[mask]
+        time_info = f"Custom date range: {start_date} to {end_date}"
     
     if selected_neighborhoods:
         filtered_data = filtered_data[filtered_data['neighborhood'].isin(selected_neighborhoods)]
+    
+    # Show time range info
+    st.info(f"📅 {time_info}")
     
     if filtered_data.empty:
         st.warning("No data matches the current filters")
