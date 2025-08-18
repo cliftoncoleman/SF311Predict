@@ -30,19 +30,7 @@ class ChartGenerator:
             
             # Skip the main prediction line to avoid overwhelming the chart
             
-            # Add historical actual data if available
-            if historical_data is not None and not historical_data.empty:
-                historical_daily = historical_data.groupby('date')['actual_requests'].sum().reset_index()
-                historical_daily['date'] = pd.to_datetime(historical_daily['date'])
-                
-                fig.add_trace(go.Scatter(
-                    x=historical_daily['date'],
-                    y=historical_daily['actual_requests'],
-                    mode='lines+markers',
-                    name='Actual Requests (Historical)',
-                    line=dict(color='#E74C3C', width=3, dash='dot'),
-                    marker=dict(size=6, symbol='diamond')
-                ))
+            # Skip historical data in chart - only show in table at bottom
             
             # Add individual neighborhood lines (all neighborhoods)
             neighborhood_sums = data.groupby('neighborhood')['predicted_requests'].sum()
