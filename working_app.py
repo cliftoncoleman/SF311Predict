@@ -296,8 +296,7 @@ def main():
                 help="Default selection includes key SF areas: SOMA, Tenderloin, Mission Bay, Mission, Bayview"
             )
             
-            # Chart type
-            chart_type = st.selectbox("Chart Type:", ["Line Chart", "Bar Chart"])
+
             
             # Aggregation level
             st.subheader("Data Aggregation")
@@ -311,7 +310,6 @@ def main():
             st.info("Click 'Load Enhanced Data' to get started!")
             date_range = None
             selected_neighborhoods = []
-            chart_type = "Line Chart"
             aggregation_level = "daily"
     
     # Main content
@@ -370,12 +368,9 @@ def main():
         aggregated_data = filtered_data
     
     # Display chart
-    st.subheader(f"{chart_type} - Enhanced Predictions ({aggregation_level.title()} View)")
+    st.subheader(f"Enhanced Predictions ({aggregation_level.title()} View)")
     
-    if chart_type == "Line Chart":
-        fig = create_simple_line_chart(aggregated_data)
-    else:
-        fig = create_simple_bar_chart(aggregated_data)
+    fig = create_simple_line_chart(aggregated_data)
     
     st.plotly_chart(fig, use_container_width=True)
     
