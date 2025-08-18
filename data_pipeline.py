@@ -29,7 +29,7 @@ class SF311DataPipeline:
         
         # Preferred neighborhood fields in order
         self.neighbor_pref_order = [
-            "neighborhoods_analysis",
+            "analysis_neighborhood",
             "neighborhoods_sffind_boundaries", 
             "neighborhood_district",
         ]

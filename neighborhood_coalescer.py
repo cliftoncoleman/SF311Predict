@@ -9,7 +9,7 @@ from collections import Counter, defaultdict
 from typing import Dict, Optional, Tuple
 
 # Standardized column names
-ANALYSIS = "neighborhoods_analysis"  # Primary - broad neighborhoods
+ANALYSIS = "analysis_neighborhood"  # Primary - broad neighborhoods
 SFFIND = "neighborhoods_sffind_boundaries"      # Secondary - micro neighborhoods
 
 def _normalize_text(s):
