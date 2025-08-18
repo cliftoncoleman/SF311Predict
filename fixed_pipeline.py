@@ -87,7 +87,7 @@ class FixedSF311Pipeline:
         self.page_size = 50000
         
         self.FOURIER_K_YEAR = 5  # Reduced for stability
-        self.max_forecast_horizon = 90
+        self.max_forecast_horizon = 200  # Allow forecasting through end of year
         
         self.neighbor_pref_order = [
             "analysis_neighborhood",
@@ -678,11 +678,18 @@ class FixedSF311Pipeline:
     
     def generate_fixed_predictions(self, 
                                   historical_data: pd.DataFrame,
-                                  prediction_days: int = 30) -> pd.DataFrame:
+                                  prediction_days: int = None) -> pd.DataFrame:
         """Generate predictions using fixed pipeline"""
         
         if historical_data.empty:
-            return self._generate_baseline_predictions(prediction_days)
+            return self._generate_baseline_predictions(prediction_days or 30)
+        
+        # If no prediction_days specified, forecast to end of year
+        if prediction_days is None:
+            today = dt.date.today()
+            end_of_year = dt.date(today.year, 12, 31)
+            prediction_days = (end_of_year - today).days
+            print(f"Forecasting to end of year: {prediction_days} days until {end_of_year}")
         
         prediction_days = min(prediction_days, self.max_forecast_horizon)
         

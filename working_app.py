@@ -96,10 +96,10 @@ def load_working_data():
     """Load data using the working pipeline"""
     try:
         with st.spinner("Loading SF311 data with enhanced pipeline..."):
-            # Use the working pipeline
+            # Use the working pipeline with end-of-year forecasting
             predictions = pipeline.run_full_fixed_pipeline(
                 days_back=365,  # Reduced for faster loading
-                prediction_days=30
+                prediction_days=None  # This will forecast to end of year
             )
             
             if not predictions.empty:
@@ -141,7 +141,12 @@ def create_demo_data():
     predictions = []
     start_date = datetime.now().date()
     
-    for i in range(30):  # 30 days
+    # Calculate days until end of year for demo consistency
+    from datetime import date
+    end_of_year = date(start_date.year, 12, 31)
+    days_to_end = min((end_of_year - start_date).days, 120)  # Cap at 120 for demo
+    
+    for i in range(days_to_end):
         prediction_date = start_date + timedelta(days=i)
         
         for neighborhood in neighborhoods:
