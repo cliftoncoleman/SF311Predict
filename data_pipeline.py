@@ -338,7 +338,7 @@ class SF311DataPipeline:
             return recent_data
             
         except Exception as e:
-            st.error(f"Error fetching historical comparison data: {str(e)}")
+            # Suppress error messages as requested by user
             return pd.DataFrame()
     
     def _run_advanced_forecasting(self, historical_data: pd.DataFrame, prediction_days: int = 30) -> pd.DataFrame:
@@ -399,7 +399,7 @@ class SF311DataPipeline:
                 return self._generate_baseline_predictions(prediction_days)
                 
         except Exception as e:
-            st.error(f"Error in advanced forecasting: {str(e)}")
+            # Suppress error messages as requested by user
             return self._generate_baseline_predictions(prediction_days)
     
     def _ensure_continuous_days(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -510,7 +510,7 @@ class SF311DataPipeline:
             next_row = self._create_next_day_features(current_df, next_date)
             
             # Make prediction
-            X_next = next_row[model_result['feature_cols']].values.reshape(1, -1)
+            X_next = pd.DataFrame(next_row[model_result['feature_cols']], columns=model_result['feature_cols'])
             pred = max(0, model_result['model'].predict(X_next)[0])
             
             # Calculate confidence intervals

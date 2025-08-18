@@ -141,7 +141,7 @@ class APIClient:
             pipeline = SF311DataPipeline()
             return pipeline.get_historical_vs_predicted(days_back)
         except Exception as e:
-            st.error(f"Error getting historical comparison data: {str(e)}")
+            # Suppress error messages as requested by user
             return None
 
     def get_historical_data(self, start_date: str = None, end_date: str = None) -> Optional[pd.DataFrame]:

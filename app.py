@@ -93,9 +93,9 @@ def main():
             index=0
         )
         
-        # Historical comparison toggle
-        st.subheader("📊 Historical Comparison")
-        show_historical = st.checkbox("Show actual vs predicted", value=True)
+        # Move historical comparison to bottom section
+        st.subheader("🎯 Chart Settings")
+        show_historical = st.checkbox("Show actual vs predicted", value=False)
         if show_historical:
             historical_days = st.slider(
                 "Historical period (days):",
@@ -195,7 +195,8 @@ def display_dashboard(data, chart_type, show_confidence_intervals, aggregation_l
         delta_text = None
         if historical_data is not None and not historical_data.empty:
             historical_total = historical_data['actual_requests'].sum()
-            delta_text = f"{((total_predictions - historical_total) / historical_total * 100):+.1f}% vs recent actual"
+            if historical_total > 0:  # Prevent division by zero
+                delta_text = f"{((total_predictions - historical_total) / historical_total * 100):+.1f}% vs recent actual"
         st.metric(
             label="Total Predicted Requests (All Neighborhoods)",
             value=f"{total_predictions:,.0f}",
@@ -288,6 +289,38 @@ def display_dashboard(data, chart_type, show_confidence_intervals, aggregation_l
             use_container_width=True,
             hide_index=True
         )
+    
+    # Historical data section (moved to bottom as requested)
+    if historical_data is not None and not historical_data.empty:
+        st.markdown("---")
+        st.subheader("📊 Historical vs Predicted Comparison")
+        
+        with st.container():
+            st.info("Historical comparison shows how well the model performs on past data for accuracy validation.")
+            
+            # Historical data summary metrics
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                historical_total = historical_data['actual_requests'].sum()
+                st.metric(
+                    label="Historical Total Requests",
+                    value=f"{historical_total:,.0f}"
+                )
+            
+            with col2:
+                historical_avg = historical_data['actual_requests'].mean()
+                st.metric(
+                    label="Historical Avg per Day",
+                    value=f"{historical_avg:.1f}"
+                )
+            
+            with col3:
+                unique_neighborhoods = len(historical_data['neighborhood'].unique())
+                st.metric(
+                    label="Neighborhoods with Data",
+                    value=f"{unique_neighborhoods}"
+                )
     
     # Download section
     st.markdown("---")
