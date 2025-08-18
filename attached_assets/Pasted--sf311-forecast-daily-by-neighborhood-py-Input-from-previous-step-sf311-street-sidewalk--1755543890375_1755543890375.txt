@@ -1,0 +1,414 @@
+# sf311_forecast_daily_by_neighborhood.py
+#
+# Input (from previous step):
+#   sf311_street_sidewalk_daily_tidy.csv  -> columns: date, neighborhood, cases
+#
+# Outputs:
+#   sf311_forecast_daily_tidy.csv   -> date, neighborhood, yhat, yhat_lo, yhat_hi, model
+#   sf311_forecast_daily_pivot.csv  -> index=date, columns=neighborhood, values=yhat
+#   sf311_backtest_scores.csv       -> neighborhood, model, MAPE, MAE, RMSE, horizon_days
+#
+# What it does:
+#   - Ensures continuous daily series per neighborhood (fills missing days with 0)
+#   - Engineers features: lags (1,7,14,28), rolling means, weekly/yearly Fourier terms,
+#     day-of-week cyclic encodings, US holiday flags
+#   - Trains 2 contenders per neighborhood:
+#       (A) HistGradientBoostingRegressor(loss='poisson')  [AI model]
+#       (B) SARIMAX(1,0,1)x(1,1,1,7) with Fourier(year) exog  [if statsmodels available]
+#     + evaluates against a seasonal-naive baseline (y[t-7])
+#   - Picks the winner by MAPE on the last 90 days, then forecasts H=90 days
+#   - Produces simple prediction intervals:
+#       - AI model: ±1.96 * residual_std on validation (per neighborhood)
+#       - SARIMAX: model’s conf_int if available; else same fallback
+#
+# Requirements:
+#   pandas, numpy, scikit-learn
+#   Optional: statsmodels (for SARIMAX). If missing, the AI model is used alone.
+
+import warnings
+warnings.filterwarnings("ignore")
+
+import os
+import math
+import numpy as np
+import pandas as pd
+from dataclasses import dataclass
+from typing import Tuple, List, Optional, Dict
+
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.ensemble import HistGradientBoostingRegressor
+
+# Try to import SARIMAX (optional)
+try:
+    import statsmodels.api as sm
+    HAVE_SM = True
+except Exception:
+    HAVE_SM = False
+
+# -------------------- Config --------------------
+DATA_CSV = "sf311_street_sidewalk_daily_tidy.csv"
+OUT_FORECAST_TIDY = "sf311_forecast_daily_tidy.csv"
+OUT_FORECAST_PIVOT = "sf311_forecast_daily_pivot.csv"
+OUT_BACKTEST = "sf311_backtest_scores.csv"
+
+HORIZON_DAYS = 90          # forecast horizon
+VAL_DAYS = 90              # backtest window length
+MIN_TRAIN_DAYS = 200       # minimum history to train models; otherwise use naive
+FOURIER_K_YEAR = 3         # number of Fourier pairs for annual seasonality
+RANDOM_STATE = 42
+
+# ----------------- Time/Seasonality utils -----------------
+def add_fourier_terms(df: pd.DataFrame, date_col: str, period: float, K: int, prefix: str) -> pd.DataFrame:
+    df = df.copy()
+    t = (df[date_col] - df[date_col].min()).dt.days.values.astype(float)
+    for k in range(1, K + 1):
+        df[f"{prefix}_sin_{k}"] = np.sin(2 * np.pi * k * t / period)
+        df[f"{prefix}_cos_{k}"] = np.cos(2 * np.pi * k * t / period)
+    return df
+
+def add_dow_cyclic(df: pd.DataFrame, date_col: str) -> pd.DataFrame:
+    df = df.copy()
+    dow = df[date_col].dt.dayofweek.values.astype(float)  # 0=Mon
+    df["dow_sin"] = np.sin(2 * np.pi * dow / 7.0)
+    df["dow_cos"] = np.cos(2 * np.pi * dow / 7.0)
+    return df
+
+def add_us_holiday_flag(df: pd.DataFrame, date_col: str) -> pd.DataFrame:
+    # Uses pandas USFederalHolidayCalendar (no external dependency)
+    from pandas.tseries.holiday import USFederalHolidayCalendar
+    df = df.copy()
+    cal = USFederalHolidayCalendar()
+    dr = pd.date_range(df[date_col].min(), df[date_col].max(), freq="D")
+    hol = cal.holidays(start=dr.min(), end=dr.max())
+    df["is_holiday"] = df[date_col].isin(hol).astype(int)
+    return df
+
+def ensure_continuous_days(df: pd.DataFrame, date_col: str, value_col: str) -> pd.DataFrame:
+    # Fill missing dates with 0 cases
+    full = pd.DataFrame({date_col: pd.date_range(df[date_col].min(), df[date_col].max(), freq="D")})
+    out = full.merge(df[[date_col, value_col]], how="left", on=date_col)
+    out[value_col] = out[value_col].fillna(0).astype(int)
+    return out
+
+def seasonal_naive_forecast(series: np.ndarray, horizon: int, season: int = 7) -> np.ndarray:
+    if len(series) < season:
+        return np.repeat(series[-1] if len(series) else 0, horizon)
+    pattern = series[-season:]
+    reps = int(math.ceil(horizon / season))
+    return np.tile(pattern, reps)[:horizon]
+
+# --------------- Feature engineering ---------------
+def build_features(df: pd.DataFrame, date_col: str, y_col: str) -> Tuple[pd.DataFrame, List[str]]:
+    """Return df with features + target, and list of feature column names."""
+    df = df.copy()
+    # Lags
+    for L in [1, 7, 14, 28]:
+        df[f"lag_{L}"] = df[y_col].shift(L)
+    # Rolling stats (exclude current day)
+    for w in [7, 14, 28]:
+        df[f"roll_mean_{w}"] = df[y_col].shift(1).rolling(w, min_periods=max(1, w//2)).mean()
+        df[f"roll_max_{w}"] = df[y_col].shift(1).rolling(w, min_periods=max(1, w//2)).max()
+    # Seasonality encodings
+    df = add_dow_cyclic(df, date_col)
+    df = add_fourier_terms(df, date_col, period=365.25, K=FOURIER_K_YEAR, prefix="yr")
+    df = add_us_holiday_flag(df, date_col)
+    # Time trend
+    df["t"] = (df[date_col] - df[date_col].min()).dt.days.astype(int)
+
+    feature_cols = [c for c in df.columns if c not in [date_col, y_col]]
+    # Drop rows with NA due to lags
+    df = df.dropna().reset_index(drop=True)
+    return df, feature_cols
+
+# --------------- Metrics ---------------
+def smape(y_true, y_pred):
+    denom = (np.abs(y_true) + np.abs(y_pred)) / 2.0
+    denom[denom == 0] = 1.0
+    return np.mean(np.abs(y_true - y_pred) / denom) * 100.0
+
+def mape(y_true, y_pred):
+    y_true = np.array(y_true, dtype=float)
+    y_pred = np.array(y_pred, dtype=float)
+    eps = 1e-6
+    return np.mean(np.abs((y_true - y_pred) / np.maximum(eps, y_true))) * 100.0
+
+# --------------- Modeling per neighborhood ---------------
+@dataclass
+class ModelResult:
+    name: str
+    yhat_val: np.ndarray
+    val_scores: Dict[str, float]
+    model_obj: object
+    sigma: float  # residual std on validation (for intervals)
+    extra: dict   # anything else (e.g., feature_cols, exog generators)
+
+def fit_ai_model(trainX, trainy, valX, valy) -> ModelResult:
+    # Histogram GBM with Poisson loss handles counts nicely
+    model = HistGradientBoostingRegressor(
+        loss="poisson",
+        max_depth=None,
+        max_iter=400,
+        learning_rate=0.05,
+        l2_regularization=0.0,
+        random_state=RANDOM_STATE
+    )
+    model.fit(trainX, trainy)
+    yhat_val = np.clip(model.predict(valX), 0, None)
+    scores = {
+        "MAPE": mape(valy, yhat_val),
+        "SMAPE": smape(valy, yhat_val),
+        "MAE": mean_absolute_error(valy, yhat_val),
+        "RMSE": mean_squared_error(valy, yhat_val, squared=False),
+    }
+    resid = valy - yhat_val
+    sigma = float(np.std(resid)) if len(resid) > 1 else 0.0
+    return ModelResult("AI_HGB_Poisson", yhat_val, scores, model, sigma, {"features": list(trainX.columns)})
+
+def fit_sarimax_model(train_df, val_df, y_col, date_col) -> Optional[ModelResult]:
+    if not HAVE_SM:
+        return None
+    try:
+        # Exogenous = yearly Fourier terms + holiday flag (already in df)
+        exog_cols = [c for c in train_df.columns if c.startswith("yr_") or c in ["is_holiday", "t", "dow_sin", "dow_cos"]]
+        mod = sm.tsa.statespace.SARIMAX(
+            train_df[y_col],
+            order=(1, 0, 1),
+            seasonal_order=(1, 1, 1, 7),
+            trend="n",
+            enforce_stationarity=False,
+            enforce_invertibility=False,
+            exog=train_df[exog_cols]
+        )
+        res = mod.fit(disp=False)
+        # Forecast validation span
+        fc = res.get_forecast(steps=len(val_df), exog=val_df[exog_cols])
+        yhat_val = np.clip(fc.predicted_mean.values, 0, None)
+        scores = {
+            "MAPE": mape(val_df[y_col].values, yhat_val),
+            "SMAPE": smape(val_df[y_col].values, yhat_val),
+            "MAE": mean_absolute_error(val_df[y_col].values, yhat_val),
+            "RMSE": mean_squared_error(val_df[y_col].values, yhat_val, squared=False),
+        }
+        resid = val_df[y_col].values - yhat_val
+        sigma = float(np.std(resid)) if len(resid) > 1 else 0.0
+        return ModelResult("SARIMAX(1,0,1)(1,1,1,7)", yhat_val, scores, res, sigma, {"exog_cols": exog_cols})
+    except Exception:
+        return None
+
+def backtest_and_select(df_nbhd: pd.DataFrame, horizon: int, val_days: int, date_col: str, y_col: str) -> Tuple[ModelResult, pd.DataFrame, pd.DataFrame]:
+    # Ensure continuous days
+    df_nbhd = ensure_continuous_days(df_nbhd, date_col, y_col)
+    # Build features for ML path + exog for SARIMAX
+    fe_df, feat_cols = build_features(df_nbhd.assign(**{date_col: pd.to_datetime(df_nbhd[date_col])}), date_col, y_col)
+    if fe_df.empty or len(fe_df) < (val_days + 30):
+        # Too short for serious training → default to seasonal naive
+        y = df_nbhd[y_col].values
+        yhat_val = seasonal_naive_forecast(y[:-horizon] if len(y) > horizon else y, min(val_days, len(y)))
+        dummy_scores = {"MAPE": np.nan, "SMAPE": np.nan, "MAE": np.nan, "RMSE": np.nan}
+        return ModelResult("Naive-7", np.array([]), dummy_scores, None, 0.0, {}), df_nbhd, fe_df
+
+    # Split into train / validation (last val_days for validation)
+    split_idx = len(fe_df) - val_days
+    train_df = fe_df.iloc[:split_idx].copy()
+    val_df   = fe_df.iloc[split_idx:].copy()
+
+    # --- Baseline seasonal naive on validation (for reporting only) ---
+    base_val_pred = seasonal_naive_forecast(df_nbhd[y_col].values[:len(df_nbhd)- (len(df_nbhd)-len(val_df))], len(val_df))
+    base_scores = {
+        "MAPE": mape(val_df[y_col].values, base_val_pred),
+        "SMAPE": smape(val_df[y_col].values, base_val_pred),
+        "MAE": mean_absolute_error(val_df[y_col].values, base_val_pred),
+        "RMSE": mean_squared_error(val_df[y_col].values, base_val_pred, squared=False),
+    }
+    baseline = ModelResult("Naive-7", base_val_pred, base_scores, None, float(np.std(val_df[y_col].values - base_val_pred)), {})
+
+    # --- AI model ---
+    ai = fit_ai_model(train_df[feat_cols], train_df[y_col].values, val_df[feat_cols], val_df[y_col].values)
+
+    # --- SARIMAX (optional) ---
+    sarimax = fit_sarimax_model(train_df, val_df, y_col, date_col)
+
+    # Choose best by MAPE (lower is better); fall back hierarchically if needed
+    candidates = [ai]
+    if sarimax is not None:
+        candidates.append(sarimax)
+    # Also include baseline to record, but we won't pick it unless it's truly best
+    candidates_with_baseline = candidates + [baseline]
+
+    best = min(candidates_with_baseline, key=lambda m: (np.inf if np.isnan(m.val_scores.get("MAPE", np.inf)) else m.val_scores["MAPE"]))
+
+    # Prefer a learned model unless baseline is strictly better
+    if best.name == "Naive-7":
+        # if baseline wins, still return best for honesty
+        pass
+
+    return best, df_nbhd, fe_df
+
+# --------------- Recursive forecasting ---------------
+def forecast_with_ai(model: HistGradientBoostingRegressor, hist_df: pd.DataFrame, feature_cols: List[str], date_col: str, y_col: str, horizon: int) -> Tuple[pd.DataFrame, float]:
+    df = hist_df.copy()
+    last_date = df[date_col].max()
+    forecasts = []
+    # For intervals, recompute residual std from last VAL_DAYS (approx via rolling)
+    sigma = float(np.std((df[y_col].values[-VAL_DAYS:] - np.clip(model.predict(df[feature_cols].tail(VAL_DAYS)), 0, None)))) if len(df) >= VAL_DAYS else 0.0
+
+    for i in range(1, horizon + 1):
+        next_date = last_date + pd.Timedelta(days=1)
+        # Append placeholder row for next day
+        row = pd.DataFrame({date_col: [next_date]})
+        tmp = pd.concat([df[[date_col, y_col]], row], ignore_index=True)
+        tmp[y_col] = tmp[y_col].astype(float)
+
+        # Rebuild features for just the tail chunk efficiently
+        tmp_full = ensure_continuous_days(tmp, date_col, y_col)
+        tmp_full[date_col] = pd.to_datetime(tmp_full[date_col])
+        tmp_full, feats = build_features(tmp_full, date_col, y_col)
+        X_next = tmp_full[feature_cols].tail(1) if set(feature_cols).issubset(tmp_full.columns) else tmp_full[feats].tail(1)
+        yhat = float(np.clip(model.predict(X_next)[0], 0, None))
+
+        forecasts.append((next_date.date(), yhat))
+        # Add the forecast back for next-step lags
+        new_row = pd.DataFrame({date_col: [next_date], y_col: [yhat]})
+        df = pd.concat([df, new_row], ignore_index=True)
+        df[date_col] = pd.to_datetime(df[date_col])
+
+    fc_df = pd.DataFrame(forecasts, columns=[date_col, "yhat"])
+    return fc_df, sigma
+
+def forecast_with_sarimax(res, hist_df, exog_cols, date_col, y_col, horizon) -> Tuple[pd.DataFrame, float, Optional[pd.DataFrame]]:
+    # Build future exog deterministically from dates
+    start = hist_df[date_col].max() + pd.Timedelta(days=1)
+    future_dates = pd.date_range(start=start, periods=horizon, freq="D")
+    fut = pd.DataFrame({date_col: future_dates})
+    fut = add_dow_cyclic(fut, date_col)
+    fut = add_fourier_terms(fut, date_col, period=365.25, K=FOURIER_K_YEAR, prefix="yr")
+    fut = add_us_holiday_flag(fut, date_col)
+    if "t" in exog_cols:
+        fut["t"] = (fut[date_col] - hist_df[date_col].min()).dt.days.astype(int)
+
+    fc = res.get_forecast(steps=horizon, exog=fut[exog_cols])
+    mean = np.clip(fc.predicted_mean.values, 0, None)
+    ci = fc.conf_int(alpha=0.05) if hasattr(fc, "conf_int") else None
+
+    fc_df = pd.DataFrame({date_col: future_dates.date, "yhat": mean})
+    sigma = float(np.std(res.resid[-VAL_DAYS:])) if hasattr(res, "resid") and len(res.resid) >= VAL_DAYS else 0.0
+    return fc_df, sigma, ci
+
+# --------------- Main ---------------
+def main():
+    if not os.path.exists(DATA_CSV):
+        raise FileNotFoundError(f"Could not find {DATA_CSV}. Make sure the daily tidy file is in this folder.")
+
+    df = pd.read_csv(DATA_CSV)
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.sort_values(["neighborhood", "date"]).reset_index(drop=True)
+
+    neighborhoods = sorted(df["neighborhood"].unique())
+    forecasts = []
+    backtest_rows = []
+
+    for nbhd in neighborhoods:
+        sub = df[df["neighborhood"] == nbhd][["date", "cases"]].copy()
+        sub = sub.rename(columns={"cases": "y"})
+        # Skip extremely sparse series
+        if sub["y"].sum() == 0 or len(sub) < MIN_TRAIN_DAYS:
+            # Seasonal naive only
+            y = ensure_continuous_days(sub, "date", "y")["y"].values
+            fc_vals = seasonal_naive_forecast(y, HORIZON_DAYS, season=7)
+            future_dates = pd.date_range(start=sub["date"].max() + pd.Timedelta(days=1), periods=HORIZON_DAYS, freq="D")
+            for d, v in zip(future_dates.date, fc_vals):
+                forecasts.append([d, nbhd, float(v), float(v), float(v), float(v), "Naive-7"])
+            backtest_rows.append([nbhd, "Naive-7", np.nan, np.nan, np.nan, VAL_DAYS])
+            print(f"[{nbhd}] series too short/sparse → Naive-7.")
+            continue
+
+        best, hist_df, fe_df = backtest_and_select(
+            df_nbhd=sub.rename(columns={"y": "cases"}),  # function expects 'cases'
+            horizon=HORIZON_DAYS,
+            val_days=VAL_DAYS,
+            date_col="date",
+            y_col="cases",
+        )
+
+        # Record backtest metrics
+        backtest_rows.append([
+            nbhd,
+            best.name,
+            best.val_scores.get("MAPE", np.nan),
+            best.val_scores.get("MAE", np.nan),
+            best.val_scores.get("RMSE", np.nan),
+            VAL_DAYS,
+        ])
+
+        # Train-time data for forecasting:
+        # For AI: re-build features using full history up to today
+        hist_df = ensure_continuous_days(sub.rename(columns={"y": "cases"}), "date", "cases")
+        hist_df["date"] = pd.to_datetime(hist_df["date"])
+        fe_full, feat_cols = build_features(hist_df.copy(), "date", "cases")
+        if fe_full.empty:
+            # fallback to naive
+            y = hist_df["cases"].values
+            fc_vals = seasonal_naive_forecast(y, HORIZON_DAYS, season=7)
+            future_dates = pd.date_range(start=hist_df["date"].max() + pd.Timedelta(days=1), periods=HORIZON_DAYS, freq="D")
+            for d, v in zip(future_dates.date, fc_vals):
+                forecasts.append([d, nbhd, float(v), float(v), float(v), float(v), "Naive-7"])
+            continue
+
+        if best.name.startswith("AI_"):
+            model = best.model_obj
+            # Refit on ALL available history
+            model.fit(fe_full[feat_cols], fe_full["cases"].values)
+            fc_df, sigma = forecast_with_ai(model, fe_full.assign(neighborhood=nbhd), feat_cols, "date", "cases", HORIZON_DAYS)
+            yhat = fc_df["yhat"].values
+            lo = np.clip(yhat - 1.96 * sigma, 0, None)
+            hi = yhat + 1.96 * sigma
+            for d, yh, l, h in zip(fc_df["date"], yhat, lo, hi):
+                forecasts.append([d, nbhd, float(yh), float(l), float(h), float(h), "AI_HGB_Poisson"])
+
+        elif best.name.startswith("SARIMAX") and HAVE_SM:
+            # Refit SARIMAX on full history using same exog recipe
+            exog_cols = best.extra["exog_cols"]
+            # Build exog on history
+            hist_exog = fe_full[exog_cols]
+            mod = sm.tsa.statespace.SARIMAX(
+                fe_full["cases"], order=(1,0,1), seasonal_order=(1,1,1,7),
+                trend="n", enforce_stationarity=False, enforce_invertibility=False, exog=hist_exog
+            )
+            res = mod.fit(disp=False)
+            fc_df, sigma, ci = forecast_with_sarimax(res, fe_full, exog_cols, "date", "cases", HORIZON_DAYS)
+            if ci is not None and isinstance(ci, pd.DataFrame) and ci.shape[0] == HORIZON_DAYS:
+                lo = np.clip(ci.iloc[:, 0].values, 0, None)
+                hi = np.clip(ci.iloc[:, 1].values, 0, None)
+            else:
+                yhat = fc_df["yhat"].values
+                lo = np.clip(yhat - 1.96 * sigma, 0, None)
+                hi = yhat + 1.96 * sigma
+            for d, yh, l, h in zip(fc_df["date"], fc_df["yhat"].values, lo, hi):
+                forecasts.append([d, nbhd, float(yh), float(l), float(h), float(h), "SARIMAX(1,0,1)(1,1,1,7)"])
+
+        else:
+            # Fallback
+            y = hist_df["cases"].values
+            fc_vals = seasonal_naive_forecast(y, HORIZON_DAYS, season=7)
+            future_dates = pd.date_range(start=hist_df["date"].max() + pd.Timedelta(days=1), periods=HORIZON_DAYS, freq="D")
+            for d, v in zip(future_dates.date, fc_vals):
+                forecasts.append([d, nbhd, float(v), float(v), float(v), float(v), "Naive-7"])
+
+        print(f"[{nbhd}] best model: {best.name} | MAPE={best.val_scores.get('MAPE', np.nan):.2f}%")
+
+    # ----- Save outputs -----
+    fc = pd.DataFrame(forecasts, columns=["date", "neighborhood", "yhat", "yhat_lo", "yhat_hi", "yhat_hi_dup", "model"])
+    fc = fc.drop(columns=["yhat_hi_dup"])  # leftover column from a simpler branch
+    fc = fc.sort_values(["neighborhood", "date"]).reset_index(drop=True)
+    fc.to_csv(OUT_FORECAST_TIDY, index=False)
+
+    piv = fc.pivot_table(index="date", columns="neighborhood", values="yhat", aggfunc="mean").sort_index()
+    piv.to_csv(OUT_FORECAST_PIVOT)
+
+    bt = pd.DataFrame(backtest_rows, columns=["neighborhood", "model", "MAPE", "MAE", "RMSE", "horizon_days"])
+    bt.to_csv(OUT_BACKTEST, index=False)
+
+    print(f"\nSaved:\n- {OUT_FORECAST_TIDY}\n- {OUT_FORECAST_PIVOT}\n- {OUT_BACKTEST}")
+
+if __name__ == "__main__":
+    main()

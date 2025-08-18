@@ -38,42 +38,125 @@ class SF311DataPipeline:
         self.session = requests.Session()
         self.session.headers.update({"X-App-Token": self.app_token})
         
-    def fetch_historical_data(self, 
-                            start_date: str = None, 
-                            end_date: str = None,
-                            limit: int = 10000) -> pd.DataFrame:
-        """Fetch historical SF311 data for Street and Sidewalk Cleaning"""
+    def get_field_names(self) -> set:
+        """Get available field names from SF311 API metadata"""
+        try:
+            r = self.session.get(self.meta_url, timeout=60)
+            r.raise_for_status()
+            meta = r.json()
+            return {c["fieldName"] for c in meta.get("columns", [])}
+        except Exception as e:
+            st.warning(f"Could not fetch field metadata: {e}")
+            return set()
+
+    def pick_neighborhood_field(self, field_names: set) -> str:
+        """Pick the best available neighborhood field"""
+        for f in self.neighbor_pref_order:
+            if f in field_names:
+                return f
+        return self.neighbor_pref_order[0]
+
+    def month_windows(self, start_date: dt.date, end_date: dt.date) -> List[tuple]:
+        """Generate month windows for data fetching"""
+        cur = dt.date(start_date.year, start_date.month, 1)
+        end_month = dt.date(end_date.year, end_date.month, 1)
+        while cur <= end_month:
+            next_month = (cur.replace(day=28) + dt.timedelta(days=4)).replace(day=1)
+            win_start = dt.datetime.combine(cur, dt.time.min)
+            hard_end_date = end_date + dt.timedelta(days=1)
+            win_end_date = min(next_month, hard_end_date)
+            win_end = dt.datetime.combine(win_end_date, dt.time.min)
+            yield win_start.isoformat(), win_end.isoformat()
+            cur = next_month
+
+    def fetch_month(self, neighborhood_field: str, win_start_iso: str, win_end_iso: str) -> pd.DataFrame:
+        """Fetch one month of data with paging"""
+        frames = []
+        offset = 0
+        retries = 0
         
-        # Build query parameters
-        params = {
-            "$where": "service_name = 'Street and Sidewalk Cleaning'",
-            "$limit": limit,
-            "$order": "requested_datetime DESC"
-        }
-        
-        if start_date and end_date:
-            params["$where"] += f" AND requested_datetime between '{start_date}T00:00:00' and '{end_date}T23:59:59'"
+        while True:
+            params = {
+                "$select": f"{self.time_field}, {neighborhood_field}",
+                "$where": (
+                    f"{self.category_field} = '{self.category_value}' AND "
+                    f"{self.time_field} >= '{win_start_iso}' AND {self.time_field} < '{win_end_iso}'"
+                ),
+                "$order": f"{self.time_field} ASC",
+                "$limit": self.page_size,
+                "$offset": offset,
+            }
+            
+            try:
+                r = self.session.get(self.base_url, params=params, timeout=120)
+            except requests.exceptions.RequestException as e:
+                if retries < 5:
+                    time.sleep(2 ** retries)
+                    retries += 1
+                    continue
+                raise RuntimeError(f"Network error after retries: {e}") from e
+
+            if r.status_code == 429:  # rate limited
+                time.sleep(2 + retries)
+                retries = min(retries + 1, 5)
+                continue
+
+            if r.status_code != 200:
+                raise RuntimeError(f"Socrata error {r.status_code}: {r.text[:1000]}")
+
+            rows = r.json()
+            if not rows:
+                break
+                
+            frames.append(pd.DataFrame(rows))
+            if len(rows) < self.page_size:
+                break
+            offset += self.page_size
+
+        if not frames:
+            return pd.DataFrame(columns=[self.time_field, neighborhood_field])
+        return pd.concat(frames, ignore_index=True)
+
+    def fetch_historical_data(self, start_days: int = 365) -> pd.DataFrame:
+        """Fetch historical SF311 data using your exact approach"""
+        today = dt.date.today()
+        start_date = today - dt.timedelta(days=start_days)
         
         try:
-            response = requests.get(self.sf311_api_base, params=params, timeout=30)
-            response.raise_for_status()
+            # Get field names and pick neighborhood field
+            fields = self.get_field_names()
+            nbhd_field = self.pick_neighborhood_field(fields)
             
-            data = response.json()
-            if not data:
+            # Fetch data by month windows
+            all_frames = []
+            for win_start, win_end in self.month_windows(start_date, today):
+                df_month = self.fetch_month(nbhd_field, win_start, win_end)
+                if not df_month.empty:
+                    all_frames.append(df_month)
+            
+            if not all_frames:
                 return pd.DataFrame()
+                
+            # Combine and process
+            raw = pd.concat(all_frames, ignore_index=True)
             
-            df = pd.DataFrame(data)
+            # Clean and aggregate
+            raw[self.time_field] = pd.to_datetime(raw[self.time_field], errors="coerce", utc=True)
+            raw["date"] = raw[self.time_field].dt.tz_convert("US/Pacific").dt.date
+            raw["neighborhood"] = raw[nbhd_field].fillna("Unknown").astype(str)
             
-            # Clean and process the data
-            df = self._clean_historical_data(df)
+            # Aggregate to daily counts
+            daily = (
+                raw.groupby(["date", "neighborhood"], as_index=False)
+                   .size()
+                   .rename(columns={"size": "cases"})
+                   .sort_values(["date", "neighborhood"])
+            )
             
-            return df
+            return daily
             
-        except requests.exceptions.RequestException as e:
-            st.error(f"Error fetching SF311 data: {str(e)}")
-            return pd.DataFrame()
         except Exception as e:
-            st.error(f"Error processing SF311 data: {str(e)}")
+            st.error(f"Error fetching SF311 data: {str(e)}")
             return pd.DataFrame()
     
     def _clean_historical_data(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -105,14 +188,15 @@ class SF311DataPipeline:
                            prediction_days: int = 30) -> pd.DataFrame:
         """
         Generate predictions based on historical data.
-        You can replace this with your actual prediction logic.
+        Using simple time series approach - replace with your ML model.
         """
         
         if historical_data.empty:
             return self._generate_baseline_predictions(prediction_days)
         
-        # Aggregate historical data by date and neighborhood
-        daily_counts = historical_data.groupby(['date', 'neighborhood']).size().reset_index(name='request_count')
+        # Use the 'cases' column from your data structure
+        daily_counts = historical_data.copy()
+        daily_counts = daily_counts.rename(columns={'cases': 'request_count'})
         
         # Calculate statistics for each neighborhood
         neighborhood_stats = self._calculate_neighborhood_statistics(daily_counts)
@@ -227,19 +311,12 @@ class SF311DataPipeline:
         return pd.DataFrame(predictions)
     
     def run_full_pipeline(self, 
-                         days_back: int = 90,
+                         days_back: int = 180,
                          prediction_days: int = 30) -> pd.DataFrame:
-        """Run the complete data pipeline"""
+        """Run the complete data pipeline using your approach"""
         
-        # Calculate date range for historical data
-        end_date = datetime.now().date()
-        start_date = end_date - timedelta(days=days_back)
-        
-        # Fetch historical data
-        historical_data = self.fetch_historical_data(
-            start_date=start_date.isoformat(),
-            end_date=end_date.isoformat()
-        )
+        # Fetch historical data using your method
+        historical_data = self.fetch_historical_data(start_days=days_back)
         
         # Generate predictions
         predictions = self.generate_predictions(historical_data, prediction_days)

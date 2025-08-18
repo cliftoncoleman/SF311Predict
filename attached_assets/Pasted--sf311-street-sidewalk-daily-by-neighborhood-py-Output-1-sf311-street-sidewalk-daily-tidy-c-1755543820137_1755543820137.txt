@@ -1,0 +1,167 @@
+# sf311_street_sidewalk_daily_by_neighborhood.py
+#
+# Output:
+# 1) sf311_street_sidewalk_daily_tidy.csv   -> columns: date, neighborhood, cases
+# 2) sf311_street_sidewalk_daily_pivot.csv  -> index=date, columns=neighborhood, values=cases
+
+import datetime as dt
+import time
+from typing import List
+import requests
+import pandas as pd
+
+# ----------------- Config -----------------
+BASE = "https://data.sfgov.org/resource/vw6y-z8j6.json"
+META = "https://data.sfgov.org/api/views/vw6y-z8j6?content=metadata"
+
+APP_TOKEN = "TuXFZRAF7T8dnb1Rqk5VOdOKN"  # ← your token (hard-coded, per your request)
+
+START_DAYS = 365 * 3
+TODAY = dt.date.today()
+START_DATE = TODAY - dt.timedelta(days=START_DAYS)
+
+TIME_FIELD = "requested_datetime"
+CATEGORY_FIELD = "service_name"
+CATEGORY_VALUE = "Street and Sidewalk Cleaning"
+
+# preferred neighborhood fields in order
+NEIGHBOR_PREF_ORDER = [
+    "neighborhoods_analysis_boundaries",
+    "neighborhoods_sffind_boundaries",
+    "neighborhood_district",
+]
+
+PAGE_SIZE = 50000
+OUT_TIDY = "sf311_street_sidewalk_daily_tidy.csv"
+OUT_PIVOT = "sf311_street_sidewalk_daily_pivot.csv"
+
+# --------------- Helpers ------------------
+session = requests.Session()
+session.headers.update({"X-App-Token": APP_TOKEN})
+
+def get_field_names() -> set:
+    r = session.get(META, timeout=60)
+    r.raise_for_status()
+    meta = r.json()
+    return {c["fieldName"] for c in meta.get("columns", [])}
+
+def pick_neighborhood_field(field_names: set) -> str:
+    for f in NEIGHBOR_PREF_ORDER:
+        if f in field_names:
+            return f
+    return NEIGHBOR_PREF_ORDER[0]
+
+def month_windows(start_date: dt.date, end_date: dt.date) -> List[tuple]:
+    """Yield (start_iso, end_iso) month windows in ISO timestamp format."""
+    cur = dt.date(start_date.year, start_date.month, 1)
+    end_month = dt.date(end_date.year, end_date.month, 1)
+    while cur <= end_month:
+        next_month = (cur.replace(day=28) + dt.timedelta(days=4)).replace(day=1)
+        # window is [cur, min(next_month, end_date+1))
+        win_start = dt.datetime.combine(cur, dt.time.min)
+        hard_end_date = end_date + dt.timedelta(days=1)  # exclusive upper bound
+        win_end_date = min(next_month, hard_end_date)
+        win_end = dt.datetime.combine(win_end_date, dt.time.min)
+        yield win_start.isoformat(), win_end.isoformat()
+        cur = next_month
+
+def fetch_month(neighborhood_field: str, win_start_iso: str, win_end_iso: str) -> pd.DataFrame:
+    """Fetch one month window, paging if needed. Only retrieve the 2 fields we need."""
+    frames = []
+    offset = 0
+    retries = 0
+    while True:
+        params = {
+            "$select": f"{TIME_FIELD}, {neighborhood_field}",
+            "$where": (
+                f"{CATEGORY_FIELD} = '{CATEGORY_VALUE}' AND "
+                f"{TIME_FIELD} >= '{win_start_iso}' AND {TIME_FIELD} < '{win_end_iso}'"
+            ),
+            "$order": f"{TIME_FIELD} ASC",
+            "$limit": PAGE_SIZE,
+            "$offset": offset,
+        }
+        try:
+            r = session.get(BASE, params=params, timeout=120)
+        except requests.exceptions.RequestException as e:
+            # transient network issue: quick exponential backoff
+            if retries < 5:
+                sleep_s = 2 ** retries
+                time.sleep(sleep_s)
+                retries += 1
+                continue
+            raise RuntimeError(f"Network error after retries: {e}") from e
+
+        if r.status_code == 429:  # rate limited
+            # honor a simple backoff
+            time.sleep(2 + retries)
+            retries = min(retries + 1, 5)
+            continue
+
+        if r.status_code != 200:
+            raise RuntimeError(f"Socrata error {r.status_code}\nURL: {r.url}\nBody: {r.text[:1000]}")
+
+        rows = r.json()
+        if not rows:
+            break
+        frames.append(pd.DataFrame(rows))
+        if len(rows) < PAGE_SIZE:
+            break
+        offset += PAGE_SIZE
+
+    if not frames:
+        return pd.DataFrame(columns=[TIME_FIELD, neighborhood_field])
+    return pd.concat(frames, ignore_index=True)
+
+def main():
+    print(f"Window: {START_DATE.isoformat()} → {TODAY.isoformat()}")
+
+    fields = get_field_names()
+    nbhd_field = pick_neighborhood_field(fields)
+    print("Using neighborhood field:", nbhd_field)
+
+    # fetch all months
+    all_frames = []
+    for i, (ws, we) in enumerate(month_windows(START_DATE, TODAY), 1):
+        print(f"[{i}] {ws[:10]} → {we[:10]}", flush=True)
+        df_m = fetch_month(nbhd_field, ws, we)
+        if not df_m.empty:
+            all_frames.append(df_m)
+
+    if not all_frames:
+        print("No rows returned for the given window/filters.")
+        return
+
+    raw = pd.concat(all_frames, ignore_index=True)
+
+    # normalize and aggregate to daily counts per neighborhood
+    raw[TIME_FIELD] = pd.to_datetime(raw[TIME_FIELD], errors="coerce", utc=True)
+    raw["date"] = raw[TIME_FIELD].dt.tz_convert("US/Pacific").dt.date  # optional: localize to SF time
+    raw["neighborhood"] = raw[nbhd_field].fillna("Unknown").astype(str)
+
+    daily = (
+        raw.groupby(["date", "neighborhood"], as_index=False)
+           .size()
+           .rename(columns={"size": "cases"})
+           .sort_values(["date", "neighborhood"])
+    )
+
+    # Save tidy
+    daily.to_csv(OUT_TIDY, index=False)
+
+    # Pivot for quick modeling/plotting (rows = date, columns = neighborhood)
+    pivot = (
+        daily.pivot_table(index="date", columns="neighborhood", values="cases", aggfunc="sum", fill_value=0)
+             .sort_index()
+    )
+    pivot.to_csv(OUT_PIVOT)
+
+    # Previews
+    print("\nTidy preview:")
+    print(daily.head(12).to_string(index=False))
+    print("\nPivot preview:")
+    print(pivot.head(12).to_string())
+    print(f"\nSaved:\n- {OUT_TIDY}\n- {OUT_PIVOT}")
+
+if __name__ == "__main__":
+    main()
