@@ -754,7 +754,14 @@ class FixedSF311Pipeline:
             nbhd_data = nbhd_data.sort_values('date').reset_index(drop=True)
             
             # Sanity-log that each neighborhood truly sees 5y
-            print(f"[{neighborhood}] train span: {nbhd_data['date'].min().date()} → {nbhd_data['date'].max().date()} | rows: {len(nbhd_data)}")
+            min_date = nbhd_data['date'].min()
+            max_date = nbhd_data['date'].max()
+            # Handle both datetime and date objects
+            if hasattr(min_date, 'date'):
+                min_date = min_date.date()
+            if hasattr(max_date, 'date'):
+                max_date = max_date.date()
+            print(f"[{neighborhood}] train span: {min_date} → {max_date} | rows: {len(nbhd_data)}")
             
             # Guardrails for small/volatile neighborhoods
             MIN_TRAIN_DAYS = 30
