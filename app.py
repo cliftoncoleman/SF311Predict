@@ -194,27 +194,39 @@ def display_dashboard(data, chart_type, show_confidence_intervals, aggregation_l
     """Display the main dashboard with charts and metrics"""
     
     # Key metrics row
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3 = st.columns(3)
     
     with col1:
-        total_predictions = data['predicted_requests'].sum()
-        delta_text = None
-        if historical_data is not None and not historical_data.empty:
-            historical_total = historical_data['actual_requests'].sum()
-            if historical_total > 0:  # Prevent division by zero
-                delta_text = f"{((total_predictions - historical_total) / historical_total * 100):+.1f}% vs recent actual"
-        st.metric(
-            label="Total Predicted Requests (All Neighborhoods)",
-            value=f"{total_predictions:,.0f}",
-            delta=delta_text
-        )
+        # Current day's predicted requests
+        today = datetime.now().date()
+        today_data = data[pd.to_datetime(data['date']).dt.date == today]
+        if not today_data.empty:
+            today_total = today_data['predicted_requests'].sum()
+            st.metric(
+                label="Today's Predicted Requests",
+                value=f"{today_total:,.0f}"
+            )
+        else:
+            # Get first available day if today's data isn't available
+            first_day_total = data.groupby('date')['predicted_requests'].sum().iloc[0] if not data.empty else 0
+            st.metric(
+                label="Next Day's Predicted Requests", 
+                value=f"{first_day_total:,.0f}"
+            )
     
     with col2:
-        avg_daily = data.groupby('date')['predicted_requests'].sum().mean()
-        st.metric(
-            label=f"Avg {aggregation_level} Requests",
-            value=f"{avg_daily:.1f}"
-        )
+        # Top neighborhood by total predicted requests
+        neighborhood_totals = data.groupby('neighborhood')['predicted_requests'].sum()
+        if not neighborhood_totals.empty:
+            top_neighborhood = neighborhood_totals.idxmax()
+            top_value = neighborhood_totals.max()
+            st.metric(
+                label="Top Neighborhood",
+                value=top_neighborhood,
+                delta=f"{top_value:.0f} total requests"
+            )
+        else:
+            st.metric(label="Top Neighborhood", value="No data")
     
     with col3:
         peak_day = data.groupby('date')['predicted_requests'].sum().idxmax()
@@ -223,13 +235,6 @@ def display_dashboard(data, chart_type, show_confidence_intervals, aggregation_l
             label="Peak Day",
             value=peak_day.strftime('%m/%d') if hasattr(peak_day, 'strftime') else str(peak_day),
             delta=f"{peak_value:.0f} requests"
-        )
-    
-    with col4:
-        unique_neighborhoods = data['neighborhood'].nunique()
-        st.metric(
-            label="Neighborhoods",
-            value=unique_neighborhoods
         )
     
     st.markdown("---")
@@ -296,37 +301,42 @@ def display_dashboard(data, chart_type, show_confidence_intervals, aggregation_l
             hide_index=True
         )
     
-    # Historical data section (moved to bottom as requested)
+    # Historical data section (moved to bottom as table)
     if historical_data is not None and not historical_data.empty:
         st.markdown("---")
         st.subheader("📊 Historical vs Predicted Comparison")
         
-        with st.container():
-            st.info("Historical comparison shows how well the model performs on past data for accuracy validation.")
-            
-            # Historical data summary metrics
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                historical_total = historical_data['actual_requests'].sum()
-                st.metric(
-                    label="Historical Total Requests",
-                    value=f"{historical_total:,.0f}"
-                )
-            
-            with col2:
-                historical_avg = historical_data['actual_requests'].mean()
-                st.metric(
-                    label="Historical Avg per Day",
-                    value=f"{historical_avg:.1f}"
-                )
-            
-            with col3:
-                unique_neighborhoods = len(historical_data['neighborhood'].unique())
-                st.metric(
-                    label="Neighborhoods with Data",
-                    value=f"{unique_neighborhoods}"
-                )
+        # Create summary table by neighborhood
+        historical_summary = historical_data.groupby('neighborhood').agg({
+            'actual_requests': ['sum', 'mean']
+        }).round(1)
+        
+        # Flatten column names
+        historical_summary.columns = ['Total Actual', 'Avg Daily Actual']
+        historical_summary = historical_summary.reset_index()
+        
+        # Add predicted data for comparison
+        predicted_summary = data.groupby('neighborhood').agg({
+            'predicted_requests': ['sum', 'mean']
+        }).round(1)
+        predicted_summary.columns = ['Total Predicted', 'Avg Daily Predicted']
+        predicted_summary = predicted_summary.reset_index()
+        
+        # Merge the data
+        comparison_table = historical_summary.merge(predicted_summary, on='neighborhood', how='outer').fillna(0)
+        
+        # Calculate accuracy metrics
+        comparison_table['Accuracy %'] = (
+            (comparison_table['Avg Daily Actual'] - abs(comparison_table['Avg Daily Actual'] - comparison_table['Avg Daily Predicted'])) / 
+            comparison_table['Avg Daily Actual'] * 100
+        ).round(1)
+        comparison_table['Accuracy %'] = comparison_table['Accuracy %'].fillna(0)
+        
+        st.dataframe(
+            comparison_table.sort_values('Total Predicted', ascending=False),
+            use_container_width=True,
+            hide_index=True
+        )
     
     # Download section
     st.markdown("---")

@@ -26,27 +26,7 @@ class ChartGenerator:
             
             fig = go.Figure()
             
-            # Add confidence interval if requested
-            if show_confidence and 'confidence_upper' in data.columns:
-                fig.add_trace(go.Scatter(
-                    x=daily_totals['date'],
-                    y=daily_totals['confidence_upper'],
-                    fill=None,
-                    mode='lines',
-                    line_color='rgba(0,100,80,0)',
-                    showlegend=False,
-                    name='Upper Confidence'
-                ))
-                
-                fig.add_trace(go.Scatter(
-                    x=daily_totals['date'],
-                    y=daily_totals['confidence_lower'],
-                    fill='tonexty',
-                    mode='lines',
-                    line_color='rgba(0,100,80,0)',
-                    name='Confidence Interval',
-                    fillcolor='rgba(68, 68, 68, 0.2)'
-                ))
+            # Skip confidence intervals for cleaner chart - only show for individual neighborhoods if requested
             
             # Skip the main prediction line to avoid overwhelming the chart
             
@@ -70,16 +50,46 @@ class ChartGenerator:
             
             for i, neighborhood in enumerate(top_neighborhoods.index):
                 neighborhood_data = data[data['neighborhood'] == neighborhood]
-                neighborhood_grouped = neighborhood_data.groupby('date')['predicted_requests'].sum().reset_index()
-                
-                fig.add_trace(go.Scatter(
-                    x=neighborhood_grouped['date'],
-                    y=neighborhood_grouped['predicted_requests'],
-                    mode='lines',
-                    name=neighborhood,
-                    line=dict(color=self.color_palette[i % len(self.color_palette)], width=2),
-                    opacity=0.7
-                ))
+                if not neighborhood_data.empty:
+                    neighborhood_grouped = neighborhood_data.groupby('date')['predicted_requests'].sum().reset_index()
+                    
+                    # Add confidence intervals for individual neighborhoods if requested
+                    if show_confidence and 'confidence_upper' in neighborhood_data.columns:
+                        # Add confidence interval
+                        neighborhood_conf = neighborhood_data.groupby('date').agg({
+                            'confidence_lower': 'sum',
+                            'confidence_upper': 'sum'
+                        }).reset_index()
+                        
+                        fig.add_trace(go.Scatter(
+                            x=neighborhood_conf['date'],
+                            y=neighborhood_conf['confidence_upper'],
+                            fill=None,
+                            mode='lines',
+                            line_color='rgba(0,0,0,0)',
+                            showlegend=False,
+                            name=f'{neighborhood} Upper'
+                        ))
+                        
+                        fig.add_trace(go.Scatter(
+                            x=neighborhood_conf['date'],
+                            y=neighborhood_conf['confidence_lower'],
+                            fill='tonexty',
+                            mode='lines',
+                            line_color='rgba(0,0,0,0)',
+                            name=f'{neighborhood} Confidence',
+                            fillcolor=f'rgba({i*30 % 255},{(i*50) % 255},{(i*70) % 255},0.1)',
+                            showlegend=False
+                        ))
+                    
+                    fig.add_trace(go.Scatter(
+                        x=neighborhood_grouped['date'],
+                        y=neighborhood_grouped['predicted_requests'],
+                        mode='lines',
+                        name=neighborhood,
+                        line=dict(color=self.color_palette[i % len(self.color_palette)], width=2),
+                        opacity=0.8
+                    ))
             
             fig.update_layout(
                 title="SF311 Street & Sidewalk Cleaning Predictions Over Time",
