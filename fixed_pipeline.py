@@ -192,6 +192,11 @@ class FixedSF311Pipeline:
         today = dt.date.today()
         start_date = today - dt.timedelta(days=start_days)
         
+        # Debug logging to confirm 5-year data loading
+        years = start_days / 365.25
+        print(f"Fetching {start_days} days of historical data ({years:.1f} years)")
+        print(f"Date range: {start_date} to {today}")
+        
         try:
             fields = self.get_field_names()
             nbhd_fields = self.get_available_neighborhood_fields(fields)
@@ -239,6 +244,17 @@ class FixedSF311Pipeline:
             daily_counts = raw.groupby(["date", "neighborhood"], as_index=False).size()
             daily_counts = daily_counts.rename(columns={"size": "cases"})
             daily = daily_counts.sort_values(["date", "neighborhood"]).reset_index(drop=True)
+            
+            # Debug logging to confirm data loaded
+            if not daily.empty:
+                date_min, date_max = daily['date'].min(), daily['date'].max()
+                total_records = len(daily)
+                print(f"Loaded {total_records} records from {date_min} to {date_max}")
+                
+                # Specifically check Mission data
+                mission_data = daily[daily['neighborhood'] == 'Mission']
+                if len(mission_data) > 0:
+                    print(f"Mission neighborhood: {len(mission_data)} records")
             
             return daily
             
@@ -1096,16 +1112,7 @@ class FixedSF311Pipeline:
                                prediction_days: int = 30) -> pd.DataFrame:
         """Run the complete fixed pipeline"""
         
-        print(f"Fetching {days_back} days of historical data ({days_back/365:.1f} years)")
         historical_data = self.fetch_historical_data(start_days=days_back)
-        
-        if not historical_data.empty:
-            date_range = f"{historical_data['date'].min()} to {historical_data['date'].max()}"
-            total_records = len(historical_data)
-            print(f"Loaded {total_records} records from {date_range}")
-        else:
-            print("WARNING: No historical data loaded!")
-        
         predictions = self.generate_fixed_predictions(historical_data, prediction_days)
         
         return predictions

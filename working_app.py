@@ -104,7 +104,7 @@ def load_working_data():
             # Use 5 years of training data for robust modeling
             predictions = fresh_pipeline.run_full_fixed_pipeline(
                 days_back=1825,  # 5 years for robust training  
-                prediction_days=14  # 14-day forecast
+                prediction_days=None  # Full year forecast (restored)
             )
             
             if not predictions.empty:

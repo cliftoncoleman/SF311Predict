@@ -1,0 +1,3702 @@
+{
+  "generated_at_utc": "2025-08-18T23:05:46.986647",
+  "horizon_days": 14,
+  "neighborhoods": {
+    "Bernal Heights": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 17.0,
+          "confidence_lower": 8.0,
+          "confidence_upper": 26.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 31.0,
+          "confidence_lower": 22.0,
+          "confidence_upper": 40.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 29.0,
+          "confidence_lower": 20.0,
+          "confidence_upper": 38.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 30.0,
+          "confidence_lower": 21.0,
+          "confidence_upper": 39.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 25.0,
+          "confidence_lower": 16.0,
+          "confidence_upper": 34.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 13.0,
+          "confidence_lower": 4.0,
+          "confidence_upper": 22.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 19.0,
+          "confidence_lower": 10.0,
+          "confidence_upper": 28.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 25.0,
+          "confidence_lower": 16.0,
+          "confidence_upper": 34.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 25.0,
+          "confidence_lower": 16.0,
+          "confidence_upper": 35.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 28.0,
+          "confidence_lower": 19.0,
+          "confidence_upper": 37.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 24.0,
+          "confidence_lower": 15.0,
+          "confidence_upper": 33.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 18.0,
+          "confidence_lower": 9.0,
+          "confidence_upper": 27.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 18.0,
+          "confidence_lower": 9.0,
+          "confidence_upper": 27.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 16.0,
+          "confidence_lower": 7.0,
+          "confidence_upper": 25.0
+        }
+      ]
+    },
+    "Inner Richmond": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 10.0,
+          "confidence_lower": 5.0,
+          "confidence_upper": 16.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 14.0,
+          "confidence_lower": 9.0,
+          "confidence_upper": 19.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 14.0,
+          "confidence_lower": 9.0,
+          "confidence_upper": 20.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 15.0,
+          "confidence_lower": 10.0,
+          "confidence_upper": 20.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 13.0,
+          "confidence_lower": 8.0,
+          "confidence_upper": 19.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 10.0,
+          "confidence_lower": 5.0,
+          "confidence_upper": 15.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 15.0,
+          "confidence_lower": 9.0,
+          "confidence_upper": 20.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 16.0,
+          "confidence_lower": 10.0,
+          "confidence_upper": 21.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 15.0,
+          "confidence_lower": 10.0,
+          "confidence_upper": 21.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 16.0,
+          "confidence_lower": 11.0,
+          "confidence_upper": 22.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 17.0,
+          "confidence_lower": 12.0,
+          "confidence_upper": 22.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 17.0,
+          "confidence_lower": 12.0,
+          "confidence_upper": 22.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 17.0,
+          "confidence_lower": 12.0,
+          "confidence_upper": 22.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 12.0,
+          "confidence_lower": 7.0,
+          "confidence_upper": 18.0
+        }
+      ]
+    },
+    "Mission": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 49.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 103.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 87.0,
+          "confidence_lower": 33.0,
+          "confidence_upper": 141.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 89.0,
+          "confidence_lower": 35.0,
+          "confidence_upper": 143.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 71.0,
+          "confidence_lower": 17.0,
+          "confidence_upper": 125.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 43.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 97.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 70.0,
+          "confidence_lower": 16.0,
+          "confidence_upper": 124.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 82.0,
+          "confidence_lower": 28.0,
+          "confidence_upper": 136.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 154.0,
+          "confidence_lower": 100.0,
+          "confidence_upper": 208.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 176.0,
+          "confidence_lower": 122.0,
+          "confidence_upper": 230.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 181.0,
+          "confidence_lower": 127.0,
+          "confidence_upper": 235.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 180.0,
+          "confidence_lower": 126.0,
+          "confidence_upper": 234.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 183.0,
+          "confidence_lower": 129.0,
+          "confidence_upper": 237.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 167.0,
+          "confidence_lower": 113.0,
+          "confidence_upper": 221.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 158.0,
+          "confidence_lower": 104.0,
+          "confidence_upper": 212.0
+        }
+      ]
+    },
+    "Nob Hill": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 62.0,
+          "confidence_lower": 44.0,
+          "confidence_upper": 79.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 69.0,
+          "confidence_lower": 51.0,
+          "confidence_upper": 86.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 72.0,
+          "confidence_lower": 55.0,
+          "confidence_upper": 90.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 40.0,
+          "confidence_lower": 23.0,
+          "confidence_upper": 58.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 39.0,
+          "confidence_lower": 22.0,
+          "confidence_upper": 56.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 32.0,
+          "confidence_lower": 15.0,
+          "confidence_upper": 50.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 50.0,
+          "confidence_lower": 32.0,
+          "confidence_upper": 67.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 70.0,
+          "confidence_lower": 53.0,
+          "confidence_upper": 88.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 80.0,
+          "confidence_lower": 62.0,
+          "confidence_upper": 97.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 72.0,
+          "confidence_lower": 54.0,
+          "confidence_upper": 89.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 66.0,
+          "confidence_lower": 48.0,
+          "confidence_upper": 83.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 51.0,
+          "confidence_lower": 33.0,
+          "confidence_upper": 68.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 52.0,
+          "confidence_lower": 34.0,
+          "confidence_upper": 69.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 60.0,
+          "confidence_lower": 43.0,
+          "confidence_upper": 78.0
+        }
+      ]
+    },
+    "Noe Valley": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 9.0,
+          "confidence_lower": 5.0,
+          "confidence_upper": 14.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 11.0,
+          "confidence_lower": 7.0,
+          "confidence_upper": 16.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 9.0,
+          "confidence_lower": 4.0,
+          "confidence_upper": 13.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 8.0,
+          "confidence_lower": 4.0,
+          "confidence_upper": 13.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 4.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 9.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 7.0,
+          "confidence_lower": 3.0,
+          "confidence_upper": 12.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 10.0,
+          "confidence_lower": 5.0,
+          "confidence_upper": 14.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 14.0,
+          "confidence_lower": 10.0,
+          "confidence_upper": 19.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 14.0,
+          "confidence_lower": 10.0,
+          "confidence_upper": 19.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 13.0,
+          "confidence_lower": 8.0,
+          "confidence_upper": 17.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 9.0,
+          "confidence_lower": 4.0,
+          "confidence_upper": 13.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 8.0,
+          "confidence_lower": 4.0,
+          "confidence_upper": 13.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 8.0,
+          "confidence_lower": 4.0,
+          "confidence_upper": 13.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 11.0,
+          "confidence_lower": 7.0,
+          "confidence_upper": 16.0
+        }
+      ]
+    },
+    "Outer Mission": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 20.0,
+          "confidence_lower": 5.0,
+          "confidence_upper": 35.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 16.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 31.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 34.0,
+          "confidence_lower": 19.0,
+          "confidence_upper": 49.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 30.0,
+          "confidence_lower": 15.0,
+          "confidence_upper": 45.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 13.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 28.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 16.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 31.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 13.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 28.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 20.0,
+          "confidence_lower": 5.0,
+          "confidence_upper": 35.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 16.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 31.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 34.0,
+          "confidence_lower": 19.0,
+          "confidence_upper": 49.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 30.0,
+          "confidence_lower": 15.0,
+          "confidence_upper": 45.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 13.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 28.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 16.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 31.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 13.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 28.0
+        }
+      ]
+    },
+    "Outer Richmond": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 51.0,
+          "confidence_lower": 42.0,
+          "confidence_upper": 60.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 49.0,
+          "confidence_lower": 40.0,
+          "confidence_upper": 58.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 45.0,
+          "confidence_lower": 37.0,
+          "confidence_upper": 54.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 47.0,
+          "confidence_lower": 38.0,
+          "confidence_upper": 56.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 40.0,
+          "confidence_lower": 31.0,
+          "confidence_upper": 48.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 42.0,
+          "confidence_lower": 33.0,
+          "confidence_upper": 51.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 46.0,
+          "confidence_lower": 37.0,
+          "confidence_upper": 54.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 52.0,
+          "confidence_lower": 43.0,
+          "confidence_upper": 61.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 50.0,
+          "confidence_lower": 41.0,
+          "confidence_upper": 59.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 46.0,
+          "confidence_lower": 38.0,
+          "confidence_upper": 55.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 48.0,
+          "confidence_lower": 39.0,
+          "confidence_upper": 57.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 41.0,
+          "confidence_lower": 32.0,
+          "confidence_upper": 49.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 43.0,
+          "confidence_lower": 35.0,
+          "confidence_upper": 52.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 47.0,
+          "confidence_lower": 38.0,
+          "confidence_upper": 55.0
+        }
+      ]
+    },
+    "South Of Market": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 43.0,
+          "confidence_lower": 30.0,
+          "confidence_upper": 57.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 48.0,
+          "confidence_lower": 35.0,
+          "confidence_upper": 62.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 62.0,
+          "confidence_lower": 49.0,
+          "confidence_upper": 76.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 69.0,
+          "confidence_lower": 55.0,
+          "confidence_upper": 82.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 63.0,
+          "confidence_lower": 49.0,
+          "confidence_upper": 76.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 56.0,
+          "confidence_lower": 43.0,
+          "confidence_upper": 70.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 52.0,
+          "confidence_lower": 38.0,
+          "confidence_upper": 65.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 38.0,
+          "confidence_lower": 24.0,
+          "confidence_upper": 51.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 43.0,
+          "confidence_lower": 29.0,
+          "confidence_upper": 56.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 57.0,
+          "confidence_lower": 43.0,
+          "confidence_upper": 70.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 63.0,
+          "confidence_lower": 50.0,
+          "confidence_upper": 76.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 57.0,
+          "confidence_lower": 44.0,
+          "confidence_upper": 70.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 51.0,
+          "confidence_lower": 37.0,
+          "confidence_upper": 64.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 46.0,
+          "confidence_lower": 33.0,
+          "confidence_upper": 59.0
+        }
+      ]
+    },
+    "Sunset/Parkside": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 51.0,
+          "confidence_lower": 41.0,
+          "confidence_upper": 61.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 59.0,
+          "confidence_lower": 49.0,
+          "confidence_upper": 68.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 51.0,
+          "confidence_lower": 41.0,
+          "confidence_upper": 60.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 40.0,
+          "confidence_lower": 30.0,
+          "confidence_upper": 49.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 29.0,
+          "confidence_lower": 20.0,
+          "confidence_upper": 39.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 27.0,
+          "confidence_lower": 18.0,
+          "confidence_upper": 37.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 27.0,
+          "confidence_lower": 17.0,
+          "confidence_upper": 36.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 40.0,
+          "confidence_lower": 30.0,
+          "confidence_upper": 49.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 43.0,
+          "confidence_lower": 33.0,
+          "confidence_upper": 52.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 40.0,
+          "confidence_lower": 31.0,
+          "confidence_upper": 50.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 33.0,
+          "confidence_lower": 23.0,
+          "confidence_upper": 43.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 28.0,
+          "confidence_lower": 18.0,
+          "confidence_upper": 38.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 30.0,
+          "confidence_lower": 20.0,
+          "confidence_upper": 40.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 42.0,
+          "confidence_lower": 32.0,
+          "confidence_upper": 51.0
+        }
+      ]
+    },
+    "Tenderloin": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 85.0,
+          "confidence_lower": 45.0,
+          "confidence_upper": 125.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 112.0,
+          "confidence_lower": 72.0,
+          "confidence_upper": 152.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 78.0,
+          "confidence_lower": 38.0,
+          "confidence_upper": 118.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 106.0,
+          "confidence_lower": 66.0,
+          "confidence_upper": 146.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 91.0,
+          "confidence_lower": 51.0,
+          "confidence_upper": 131.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 57.0,
+          "confidence_lower": 17.0,
+          "confidence_upper": 97.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 55.0,
+          "confidence_lower": 15.0,
+          "confidence_upper": 95.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 85.0,
+          "confidence_lower": 45.0,
+          "confidence_upper": 125.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 112.0,
+          "confidence_lower": 72.0,
+          "confidence_upper": 152.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 78.0,
+          "confidence_lower": 38.0,
+          "confidence_upper": 118.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 106.0,
+          "confidence_lower": 66.0,
+          "confidence_upper": 146.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 91.0,
+          "confidence_lower": 51.0,
+          "confidence_upper": 131.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 57.0,
+          "confidence_lower": 17.0,
+          "confidence_upper": 97.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 55.0,
+          "confidence_lower": 15.0,
+          "confidence_upper": 95.0
+        }
+      ]
+    },
+    "Bayview Hunters Point": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 53.0,
+          "confidence_lower": 33.0,
+          "confidence_upper": 73.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 85.0,
+          "confidence_lower": 65.0,
+          "confidence_upper": 105.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 95.0,
+          "confidence_lower": 75.0,
+          "confidence_upper": 116.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 84.0,
+          "confidence_lower": 64.0,
+          "confidence_upper": 104.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 61.0,
+          "confidence_lower": 41.0,
+          "confidence_upper": 81.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 51.0,
+          "confidence_lower": 30.0,
+          "confidence_upper": 71.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 49.0,
+          "confidence_lower": 29.0,
+          "confidence_upper": 69.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 70.0,
+          "confidence_lower": 50.0,
+          "confidence_upper": 90.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 83.0,
+          "confidence_lower": 63.0,
+          "confidence_upper": 104.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 82.0,
+          "confidence_lower": 61.0,
+          "confidence_upper": 102.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 63.0,
+          "confidence_lower": 43.0,
+          "confidence_upper": 84.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 41.0,
+          "confidence_lower": 21.0,
+          "confidence_upper": 61.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 26.0,
+          "confidence_lower": 6.0,
+          "confidence_upper": 46.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 34.0,
+          "confidence_lower": 14.0,
+          "confidence_upper": 54.0
+        }
+      ]
+    },
+    "Castro/Upper Market": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 27.0,
+          "confidence_lower": 17.0,
+          "confidence_upper": 38.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 32.0,
+          "confidence_lower": 22.0,
+          "confidence_upper": 43.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 41.0,
+          "confidence_lower": 30.0,
+          "confidence_upper": 52.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 43.0,
+          "confidence_lower": 33.0,
+          "confidence_upper": 54.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 35.0,
+          "confidence_lower": 25.0,
+          "confidence_upper": 46.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 27.0,
+          "confidence_lower": 16.0,
+          "confidence_upper": 38.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 40.0,
+          "confidence_lower": 29.0,
+          "confidence_upper": 50.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 46.0,
+          "confidence_lower": 35.0,
+          "confidence_upper": 57.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 47.0,
+          "confidence_lower": 36.0,
+          "confidence_upper": 58.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 40.0,
+          "confidence_lower": 29.0,
+          "confidence_upper": 51.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 31.0,
+          "confidence_lower": 20.0,
+          "confidence_upper": 42.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 29.0,
+          "confidence_lower": 18.0,
+          "confidence_upper": 39.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 34.0,
+          "confidence_lower": 23.0,
+          "confidence_upper": 44.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 33.0,
+          "confidence_lower": 22.0,
+          "confidence_upper": 44.0
+        }
+      ]
+    },
+    "Chinatown": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 28.0,
+          "confidence_lower": 21.0,
+          "confidence_upper": 36.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 31.0,
+          "confidence_lower": 24.0,
+          "confidence_upper": 38.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 27.0,
+          "confidence_lower": 20.0,
+          "confidence_upper": 34.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 20.0,
+          "confidence_lower": 13.0,
+          "confidence_upper": 28.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 23.0,
+          "confidence_lower": 16.0,
+          "confidence_upper": 30.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 24.0,
+          "confidence_lower": 16.0,
+          "confidence_upper": 31.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 31.0,
+          "confidence_lower": 23.0,
+          "confidence_upper": 38.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 26.0,
+          "confidence_lower": 19.0,
+          "confidence_upper": 34.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 22.0,
+          "confidence_lower": 15.0,
+          "confidence_upper": 30.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 19.0,
+          "confidence_lower": 12.0,
+          "confidence_upper": 27.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 18.0,
+          "confidence_lower": 11.0,
+          "confidence_upper": 25.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 15.0,
+          "confidence_lower": 8.0,
+          "confidence_upper": 23.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 18.0,
+          "confidence_lower": 10.0,
+          "confidence_upper": 25.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 20.0,
+          "confidence_lower": 12.0,
+          "confidence_upper": 27.0
+        }
+      ]
+    },
+    "Excelsior": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 20.0,
+          "confidence_lower": 13.0,
+          "confidence_upper": 28.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 27.0,
+          "confidence_lower": 19.0,
+          "confidence_upper": 34.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 33.0,
+          "confidence_lower": 26.0,
+          "confidence_upper": 41.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 36.0,
+          "confidence_lower": 28.0,
+          "confidence_upper": 43.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 31.0,
+          "confidence_lower": 24.0,
+          "confidence_upper": 39.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 24.0,
+          "confidence_lower": 16.0,
+          "confidence_upper": 32.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 39.0,
+          "confidence_lower": 32.0,
+          "confidence_upper": 47.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 43.0,
+          "confidence_lower": 35.0,
+          "confidence_upper": 50.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 40.0,
+          "confidence_lower": 32.0,
+          "confidence_upper": 47.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 32.0,
+          "confidence_lower": 25.0,
+          "confidence_upper": 40.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 26.0,
+          "confidence_lower": 18.0,
+          "confidence_upper": 34.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 26.0,
+          "confidence_lower": 19.0,
+          "confidence_upper": 34.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 34.0,
+          "confidence_lower": 26.0,
+          "confidence_upper": 41.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 30.0,
+          "confidence_lower": 23.0,
+          "confidence_upper": 38.0
+        }
+      ]
+    },
+    "Financial District/South Beach": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 24.0,
+          "confidence_lower": 17.0,
+          "confidence_upper": 31.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 18.0,
+          "confidence_lower": 11.0,
+          "confidence_upper": 25.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 20.0,
+          "confidence_lower": 13.0,
+          "confidence_upper": 27.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 12.0,
+          "confidence_lower": 5.0,
+          "confidence_upper": 19.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 11.0,
+          "confidence_lower": 4.0,
+          "confidence_upper": 19.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 11.0,
+          "confidence_lower": 4.0,
+          "confidence_upper": 18.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 10.0,
+          "confidence_lower": 3.0,
+          "confidence_upper": 17.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 16.0,
+          "confidence_lower": 8.0,
+          "confidence_upper": 23.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 20.0,
+          "confidence_lower": 13.0,
+          "confidence_upper": 27.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 21.0,
+          "confidence_lower": 13.0,
+          "confidence_upper": 28.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 23.0,
+          "confidence_lower": 15.0,
+          "confidence_upper": 30.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 22.0,
+          "confidence_lower": 15.0,
+          "confidence_upper": 30.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 22.0,
+          "confidence_lower": 15.0,
+          "confidence_upper": 30.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 23.0,
+          "confidence_lower": 16.0,
+          "confidence_upper": 31.0
+        }
+      ]
+    },
+    "Glen Park": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 4.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 7.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 6.0,
+          "confidence_lower": 3.0,
+          "confidence_upper": 9.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 5.0,
+          "confidence_lower": 2.0,
+          "confidence_upper": 8.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 4.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 7.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 4.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 7.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 4.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 7.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 6.0,
+          "confidence_lower": 3.0,
+          "confidence_upper": 9.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 5.0,
+          "confidence_lower": 2.0,
+          "confidence_upper": 8.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 7.0,
+          "confidence_lower": 4.0,
+          "confidence_upper": 10.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 6.0,
+          "confidence_lower": 3.0,
+          "confidence_upper": 9.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 5.0,
+          "confidence_lower": 2.0,
+          "confidence_upper": 8.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 5.0,
+          "confidence_lower": 2.0,
+          "confidence_upper": 8.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 5.0,
+          "confidence_lower": 2.0,
+          "confidence_upper": 8.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 7.0,
+          "confidence_lower": 4.0,
+          "confidence_upper": 10.0
+        }
+      ]
+    },
+    "Golden Gate Park": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 4.0,
+          "confidence_lower": 3.0,
+          "confidence_upper": 6.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 3.0,
+          "confidence_lower": 2.0,
+          "confidence_upper": 5.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 4.0,
+          "confidence_lower": 2.0,
+          "confidence_upper": 5.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 4.0,
+          "confidence_lower": 2.0,
+          "confidence_upper": 5.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 3.0,
+          "confidence_lower": 2.0,
+          "confidence_upper": 5.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 4.0,
+          "confidence_lower": 2.0,
+          "confidence_upper": 5.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 3.0,
+          "confidence_lower": 2.0,
+          "confidence_upper": 5.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 3.0,
+          "confidence_lower": 2.0,
+          "confidence_upper": 5.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 3.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 4.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 3.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 4.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 3.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 4.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 2.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 4.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 3.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 4.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 3.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 4.0
+        }
+      ]
+    },
+    "Haight Ashbury": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 33.0,
+          "confidence_lower": 25.0,
+          "confidence_upper": 41.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 35.0,
+          "confidence_lower": 27.0,
+          "confidence_upper": 43.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 36.0,
+          "confidence_lower": 28.0,
+          "confidence_upper": 44.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 28.0,
+          "confidence_lower": 20.0,
+          "confidence_upper": 36.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 37.0,
+          "confidence_lower": 29.0,
+          "confidence_upper": 45.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 24.0,
+          "confidence_lower": 16.0,
+          "confidence_upper": 32.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 30.0,
+          "confidence_lower": 22.0,
+          "confidence_upper": 38.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 32.0,
+          "confidence_lower": 24.0,
+          "confidence_upper": 40.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 31.0,
+          "confidence_lower": 23.0,
+          "confidence_upper": 39.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 29.0,
+          "confidence_lower": 21.0,
+          "confidence_upper": 37.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 31.0,
+          "confidence_lower": 23.0,
+          "confidence_upper": 39.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 27.0,
+          "confidence_lower": 19.0,
+          "confidence_upper": 35.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 33.0,
+          "confidence_lower": 25.0,
+          "confidence_upper": 41.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 34.0,
+          "confidence_lower": 26.0,
+          "confidence_upper": 42.0
+        }
+      ]
+    },
+    "Hayes Valley": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 46.0,
+          "confidence_lower": 31.0,
+          "confidence_upper": 61.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 42.0,
+          "confidence_lower": 28.0,
+          "confidence_upper": 57.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 50.0,
+          "confidence_lower": 36.0,
+          "confidence_upper": 65.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 48.0,
+          "confidence_lower": 33.0,
+          "confidence_upper": 63.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 56.0,
+          "confidence_lower": 41.0,
+          "confidence_upper": 70.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 55.0,
+          "confidence_lower": 40.0,
+          "confidence_upper": 69.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 64.0,
+          "confidence_lower": 49.0,
+          "confidence_upper": 79.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 60.0,
+          "confidence_lower": 45.0,
+          "confidence_upper": 75.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 59.0,
+          "confidence_lower": 44.0,
+          "confidence_upper": 73.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 51.0,
+          "confidence_lower": 36.0,
+          "confidence_upper": 66.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 49.0,
+          "confidence_lower": 34.0,
+          "confidence_upper": 64.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 46.0,
+          "confidence_lower": 31.0,
+          "confidence_upper": 61.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 49.0,
+          "confidence_lower": 34.0,
+          "confidence_upper": 63.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 47.0,
+          "confidence_lower": 32.0,
+          "confidence_upper": 62.0
+        }
+      ]
+    },
+    "Inner Sunset": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 14.0,
+          "confidence_lower": 9.0,
+          "confidence_upper": 20.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 22.0,
+          "confidence_lower": 16.0,
+          "confidence_upper": 27.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 21.0,
+          "confidence_lower": 15.0,
+          "confidence_upper": 26.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 16.0,
+          "confidence_lower": 10.0,
+          "confidence_upper": 21.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 15.0,
+          "confidence_lower": 9.0,
+          "confidence_upper": 20.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 16.0,
+          "confidence_lower": 10.0,
+          "confidence_upper": 21.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 18.0,
+          "confidence_lower": 13.0,
+          "confidence_upper": 24.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 15.0,
+          "confidence_lower": 9.0,
+          "confidence_upper": 20.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 23.0,
+          "confidence_lower": 17.0,
+          "confidence_upper": 28.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 21.0,
+          "confidence_lower": 16.0,
+          "confidence_upper": 27.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 17.0,
+          "confidence_lower": 11.0,
+          "confidence_upper": 22.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 16.0,
+          "confidence_lower": 10.0,
+          "confidence_upper": 21.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 16.0,
+          "confidence_lower": 11.0,
+          "confidence_upper": 22.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 19.0,
+          "confidence_lower": 13.0,
+          "confidence_upper": 24.0
+        }
+      ]
+    },
+    "Japantown": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 5.0,
+          "confidence_lower": 2.0,
+          "confidence_upper": 8.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 6.0,
+          "confidence_lower": 3.0,
+          "confidence_upper": 9.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 5.0,
+          "confidence_lower": 2.0,
+          "confidence_upper": 8.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 2.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 5.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 3.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 3.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 3.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 6.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 4.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 7.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 5.0,
+          "confidence_lower": 2.0,
+          "confidence_upper": 8.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 4.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 7.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 3.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 7.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 3.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 6.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 3.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 6.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 2.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 5.0
+        }
+      ]
+    },
+    "Lakeshore": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 2.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 3.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 2.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 3.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 3.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 3.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 3.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        }
+      ]
+    },
+    "Lincoln Park": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 0.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 1.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 1.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 0.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 0.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 0.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 0.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 0.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 0.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 0.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 0.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 0.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 0.0
+        }
+      ]
+    },
+    "Lone Mountain/Usf": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 18.0,
+          "confidence_lower": 11.0,
+          "confidence_upper": 24.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 15.0,
+          "confidence_lower": 9.0,
+          "confidence_upper": 21.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 15.0,
+          "confidence_lower": 9.0,
+          "confidence_upper": 21.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 18.0,
+          "confidence_lower": 11.0,
+          "confidence_upper": 24.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 21.0,
+          "confidence_lower": 14.0,
+          "confidence_upper": 27.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 21.0,
+          "confidence_lower": 15.0,
+          "confidence_upper": 27.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 23.0,
+          "confidence_lower": 16.0,
+          "confidence_upper": 29.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 21.0,
+          "confidence_lower": 15.0,
+          "confidence_upper": 27.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 19.0,
+          "confidence_lower": 13.0,
+          "confidence_upper": 26.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 17.0,
+          "confidence_lower": 11.0,
+          "confidence_upper": 24.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 16.0,
+          "confidence_lower": 9.0,
+          "confidence_upper": 22.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 16.0,
+          "confidence_lower": 9.0,
+          "confidence_upper": 22.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 18.0,
+          "confidence_lower": 11.0,
+          "confidence_upper": 24.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 18.0,
+          "confidence_lower": 12.0,
+          "confidence_upper": 25.0
+        }
+      ]
+    },
+    "Marina": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 6.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 19.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 28.0,
+          "confidence_lower": 15.0,
+          "confidence_upper": 41.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 36.0,
+          "confidence_lower": 23.0,
+          "confidence_upper": 49.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 32.0,
+          "confidence_lower": 20.0,
+          "confidence_upper": 45.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 17.0,
+          "confidence_lower": 4.0,
+          "confidence_upper": 30.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 23.0,
+          "confidence_lower": 11.0,
+          "confidence_upper": 36.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 30.0,
+          "confidence_lower": 17.0,
+          "confidence_upper": 43.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 44.0,
+          "confidence_lower": 31.0,
+          "confidence_upper": 57.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 39.0,
+          "confidence_lower": 26.0,
+          "confidence_upper": 52.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 31.0,
+          "confidence_lower": 18.0,
+          "confidence_upper": 44.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 27.0,
+          "confidence_lower": 14.0,
+          "confidence_upper": 40.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 31.0,
+          "confidence_lower": 18.0,
+          "confidence_upper": 44.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 29.0,
+          "confidence_lower": 16.0,
+          "confidence_upper": 42.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 26.0,
+          "confidence_lower": 13.0,
+          "confidence_upper": 39.0
+        }
+      ]
+    },
+    "Mclaren Park": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        }
+      ]
+    },
+    "Mission Bay": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 10.0,
+          "confidence_lower": 4.0,
+          "confidence_upper": 16.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 6.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 12.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 6.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 4.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 10.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 4.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 10.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 6.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 6.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 2.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 8.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 6.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 12.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 12.0,
+          "confidence_lower": 6.0,
+          "confidence_upper": 18.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 10.0,
+          "confidence_lower": 4.0,
+          "confidence_upper": 16.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 7.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 13.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 7.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 13.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 7.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 13.0
+        }
+      ]
+    },
+    "North Beach": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 15.0,
+          "confidence_lower": 9.0,
+          "confidence_upper": 22.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 18.0,
+          "confidence_lower": 11.0,
+          "confidence_upper": 25.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 15.0,
+          "confidence_lower": 9.0,
+          "confidence_upper": 22.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 15.0,
+          "confidence_lower": 8.0,
+          "confidence_upper": 22.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 14.0,
+          "confidence_lower": 8.0,
+          "confidence_upper": 21.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 11.0,
+          "confidence_lower": 4.0,
+          "confidence_upper": 17.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 15.0,
+          "confidence_lower": 8.0,
+          "confidence_upper": 22.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 16.0,
+          "confidence_lower": 10.0,
+          "confidence_upper": 23.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 19.0,
+          "confidence_lower": 12.0,
+          "confidence_upper": 26.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 16.0,
+          "confidence_lower": 10.0,
+          "confidence_upper": 23.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 16.0,
+          "confidence_lower": 9.0,
+          "confidence_upper": 23.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 15.0,
+          "confidence_lower": 9.0,
+          "confidence_upper": 22.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 12.0,
+          "confidence_lower": 5.0,
+          "confidence_upper": 18.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 16.0,
+          "confidence_lower": 9.0,
+          "confidence_upper": 23.0
+        }
+      ]
+    },
+    "Oceanview/Merced/Ingleside": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 15.0,
+          "confidence_lower": 6.0,
+          "confidence_upper": 24.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 12.0,
+          "confidence_lower": 3.0,
+          "confidence_upper": 21.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 20.0,
+          "confidence_lower": 11.0,
+          "confidence_upper": 29.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 14.0,
+          "confidence_lower": 5.0,
+          "confidence_upper": 23.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 19.0,
+          "confidence_lower": 10.0,
+          "confidence_upper": 28.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 6.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 15.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 8.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 17.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 15.0,
+          "confidence_lower": 6.0,
+          "confidence_upper": 24.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 12.0,
+          "confidence_lower": 3.0,
+          "confidence_upper": 21.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 20.0,
+          "confidence_lower": 11.0,
+          "confidence_upper": 29.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 14.0,
+          "confidence_lower": 5.0,
+          "confidence_upper": 23.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 19.0,
+          "confidence_lower": 10.0,
+          "confidence_upper": 28.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 6.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 15.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 8.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 17.0
+        }
+      ]
+    },
+    "Pacific Heights": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 26.0,
+          "confidence_lower": 20.0,
+          "confidence_upper": 32.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 26.0,
+          "confidence_lower": 20.0,
+          "confidence_upper": 32.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 22.0,
+          "confidence_lower": 17.0,
+          "confidence_upper": 28.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 25.0,
+          "confidence_lower": 19.0,
+          "confidence_upper": 31.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 26.0,
+          "confidence_lower": 20.0,
+          "confidence_upper": 32.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 28.0,
+          "confidence_lower": 22.0,
+          "confidence_upper": 34.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 20.0,
+          "confidence_lower": 14.0,
+          "confidence_upper": 26.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 27.0,
+          "confidence_lower": 21.0,
+          "confidence_upper": 32.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 26.0,
+          "confidence_lower": 21.0,
+          "confidence_upper": 32.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 23.0,
+          "confidence_lower": 17.0,
+          "confidence_upper": 28.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 26.0,
+          "confidence_lower": 20.0,
+          "confidence_upper": 31.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 26.0,
+          "confidence_lower": 20.0,
+          "confidence_upper": 32.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 28.0,
+          "confidence_lower": 22.0,
+          "confidence_upper": 34.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 20.0,
+          "confidence_lower": 15.0,
+          "confidence_upper": 26.0
+        }
+      ]
+    },
+    "Portola": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 23.0,
+          "confidence_lower": 10.0,
+          "confidence_upper": 36.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 20.0,
+          "confidence_lower": 7.0,
+          "confidence_upper": 33.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 25.0,
+          "confidence_lower": 12.0,
+          "confidence_upper": 38.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 16.0,
+          "confidence_lower": 3.0,
+          "confidence_upper": 29.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 7.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 20.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 7.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 19.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 12.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 25.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 20.0,
+          "confidence_lower": 7.0,
+          "confidence_upper": 33.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 25.0,
+          "confidence_lower": 12.0,
+          "confidence_upper": 37.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 18.0,
+          "confidence_lower": 6.0,
+          "confidence_upper": 31.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 13.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 26.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 12.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 25.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 15.0,
+          "confidence_lower": 2.0,
+          "confidence_upper": 27.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 20.0,
+          "confidence_lower": 7.0,
+          "confidence_upper": 33.0
+        }
+      ]
+    },
+    "Potrero Hill": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 20.0,
+          "confidence_lower": 13.0,
+          "confidence_upper": 26.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 17.0,
+          "confidence_lower": 10.0,
+          "confidence_upper": 24.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 9.0,
+          "confidence_lower": 2.0,
+          "confidence_upper": 16.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 8.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 15.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 5.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 12.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 3.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 10.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 7.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 7.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 7.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 2.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 9.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 3.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 10.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 5.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 12.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 8.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 15.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 14.0,
+          "confidence_lower": 7.0,
+          "confidence_upper": 21.0
+        }
+      ]
+    },
+    "Presidio Heights": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 7.0,
+          "confidence_lower": 3.0,
+          "confidence_upper": 11.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 13.0,
+          "confidence_lower": 9.0,
+          "confidence_upper": 17.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 14.0,
+          "confidence_lower": 11.0,
+          "confidence_upper": 18.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 10.0,
+          "confidence_lower": 7.0,
+          "confidence_upper": 14.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 10.0,
+          "confidence_lower": 6.0,
+          "confidence_upper": 14.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 8.0,
+          "confidence_lower": 4.0,
+          "confidence_upper": 11.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 11.0,
+          "confidence_lower": 7.0,
+          "confidence_upper": 15.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 13.0,
+          "confidence_lower": 9.0,
+          "confidence_upper": 16.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 13.0,
+          "confidence_lower": 9.0,
+          "confidence_upper": 16.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 11.0,
+          "confidence_lower": 7.0,
+          "confidence_upper": 15.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 10.0,
+          "confidence_lower": 6.0,
+          "confidence_upper": 13.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 7.0,
+          "confidence_lower": 3.0,
+          "confidence_upper": 11.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 6.0,
+          "confidence_lower": 2.0,
+          "confidence_upper": 10.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 6.0,
+          "confidence_lower": 2.0,
+          "confidence_upper": 10.0
+        }
+      ]
+    },
+    "Russian Hill": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 16.0,
+          "confidence_lower": 9.0,
+          "confidence_upper": 23.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 15.0,
+          "confidence_lower": 8.0,
+          "confidence_upper": 21.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 5.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 12.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 7.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 14.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 11.0,
+          "confidence_lower": 4.0,
+          "confidence_upper": 18.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 17.0,
+          "confidence_lower": 10.0,
+          "confidence_upper": 24.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 19.0,
+          "confidence_lower": 12.0,
+          "confidence_upper": 26.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 22.0,
+          "confidence_lower": 15.0,
+          "confidence_upper": 29.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 21.0,
+          "confidence_lower": 14.0,
+          "confidence_upper": 28.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 23.0,
+          "confidence_lower": 16.0,
+          "confidence_upper": 30.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 24.0,
+          "confidence_lower": 17.0,
+          "confidence_upper": 30.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 24.0,
+          "confidence_lower": 17.0,
+          "confidence_upper": 31.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 23.0,
+          "confidence_lower": 16.0,
+          "confidence_upper": 30.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 23.0,
+          "confidence_lower": 16.0,
+          "confidence_upper": 30.0
+        }
+      ]
+    },
+    "Seacliff": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        }
+      ]
+    },
+    "Twin Peaks": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 2.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 4.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 3.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 4.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 3.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 3.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 5.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 3.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 2.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 4.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 3.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 2.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 3.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 2.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 4.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 3.0,
+          "confidence_lower": 2.0,
+          "confidence_upper": 5.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 3.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 4.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 3.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 4.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 2.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 4.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 3.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 4.0
+        }
+      ]
+    },
+    "Visitacion Valley": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 4.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 10.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 8.0,
+          "confidence_lower": 2.0,
+          "confidence_upper": 14.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 12.0,
+          "confidence_lower": 7.0,
+          "confidence_upper": 18.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 11.0,
+          "confidence_lower": 5.0,
+          "confidence_upper": 17.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 11.0,
+          "confidence_lower": 6.0,
+          "confidence_upper": 17.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 10.0,
+          "confidence_lower": 4.0,
+          "confidence_upper": 15.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 13.0,
+          "confidence_lower": 7.0,
+          "confidence_upper": 18.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 22.0,
+          "confidence_lower": 16.0,
+          "confidence_upper": 27.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 25.0,
+          "confidence_lower": 19.0,
+          "confidence_upper": 31.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 22.0,
+          "confidence_lower": 17.0,
+          "confidence_upper": 28.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 19.0,
+          "confidence_lower": 13.0,
+          "confidence_upper": 24.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 14.0,
+          "confidence_lower": 8.0,
+          "confidence_upper": 20.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 13.0,
+          "confidence_lower": 7.0,
+          "confidence_upper": 19.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 14.0,
+          "confidence_lower": 8.0,
+          "confidence_upper": 20.0
+        }
+      ]
+    },
+    "West Of Twin Peaks": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 12.0,
+          "confidence_lower": 9.0,
+          "confidence_upper": 16.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 14.0,
+          "confidence_lower": 11.0,
+          "confidence_upper": 18.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 16.0,
+          "confidence_lower": 12.0,
+          "confidence_upper": 19.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 16.0,
+          "confidence_lower": 12.0,
+          "confidence_upper": 20.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 14.0,
+          "confidence_lower": 10.0,
+          "confidence_upper": 17.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 13.0,
+          "confidence_lower": 9.0,
+          "confidence_upper": 17.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 15.0,
+          "confidence_lower": 11.0,
+          "confidence_upper": 18.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 17.0,
+          "confidence_lower": 14.0,
+          "confidence_upper": 21.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 18.0,
+          "confidence_lower": 14.0,
+          "confidence_upper": 22.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 17.0,
+          "confidence_lower": 14.0,
+          "confidence_upper": 21.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 16.0,
+          "confidence_lower": 12.0,
+          "confidence_upper": 20.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 15.0,
+          "confidence_lower": 12.0,
+          "confidence_upper": 19.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 15.0,
+          "confidence_lower": 12.0,
+          "confidence_upper": 19.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 16.0,
+          "confidence_lower": 12.0,
+          "confidence_upper": 20.0
+        }
+      ]
+    },
+    "Western Addition": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 24.0,
+          "confidence_lower": 12.0,
+          "confidence_upper": 36.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 34.0,
+          "confidence_lower": 22.0,
+          "confidence_upper": 46.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 34.0,
+          "confidence_lower": 23.0,
+          "confidence_upper": 46.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 21.0,
+          "confidence_lower": 9.0,
+          "confidence_upper": 33.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 15.0,
+          "confidence_lower": 3.0,
+          "confidence_upper": 27.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 13.0,
+          "confidence_lower": 2.0,
+          "confidence_upper": 25.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 18.0,
+          "confidence_lower": 6.0,
+          "confidence_upper": 30.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 33.0,
+          "confidence_lower": 21.0,
+          "confidence_upper": 45.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 38.0,
+          "confidence_lower": 26.0,
+          "confidence_upper": 49.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 36.0,
+          "confidence_lower": 24.0,
+          "confidence_upper": 48.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 33.0,
+          "confidence_lower": 22.0,
+          "confidence_upper": 45.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 28.0,
+          "confidence_lower": 16.0,
+          "confidence_upper": 39.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 25.0,
+          "confidence_lower": 13.0,
+          "confidence_upper": 37.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 28.0,
+          "confidence_lower": 16.0,
+          "confidence_upper": 39.0
+        }
+      ]
+    },
+    "Presidio": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 0.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 0.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 0.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        }
+      ]
+    },
+    "Unknown": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 5.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 12.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 11.0,
+          "confidence_lower": 4.0,
+          "confidence_upper": 18.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 12.0,
+          "confidence_lower": 5.0,
+          "confidence_upper": 19.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 13.0,
+          "confidence_lower": 6.0,
+          "confidence_upper": 20.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 4.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 11.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 2.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 9.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 3.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 10.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 11.0,
+          "confidence_lower": 4.0,
+          "confidence_upper": 18.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 15.0,
+          "confidence_lower": 8.0,
+          "confidence_upper": 22.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 15.0,
+          "confidence_lower": 8.0,
+          "confidence_upper": 22.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 10.0,
+          "confidence_lower": 3.0,
+          "confidence_upper": 17.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 8.0,
+          "confidence_lower": 1.0,
+          "confidence_upper": 15.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 7.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 14.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 9.0,
+          "confidence_lower": 2.0,
+          "confidence_upper": 16.0
+        }
+      ]
+    },
+    "Treasure Island": {
+      "predictions": [
+        {
+          "date": "2025-08-18",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 3.0
+        },
+        {
+          "date": "2025-08-19",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-20",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-21",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-22",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-23",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-24",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-25",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-26",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 1.0
+        },
+        {
+          "date": "2025-08-27",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-28",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-29",
+          "predicted_requests": 0.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-30",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        },
+        {
+          "date": "2025-08-31",
+          "predicted_requests": 1.0,
+          "confidence_lower": 0.0,
+          "confidence_upper": 2.0
+        }
+      ]
+    }
+  }
+}
