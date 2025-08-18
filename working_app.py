@@ -1,0 +1,325 @@
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+from datetime import datetime, timedelta
+import numpy as np
+from fixed_pipeline import FixedSF311Pipeline
+
+# Page configuration
+st.set_page_config(
+    page_title="Enhanced SF311 Predictions - Working Version",
+    page_icon="🧹",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Initialize session state
+if 'working_data' not in st.session_state:
+    st.session_state.working_data = None
+if 'working_neighborhoods' not in st.session_state:
+    st.session_state.working_neighborhoods = []
+if 'last_working_refresh' not in st.session_state:
+    st.session_state.last_working_refresh = None
+
+@st.cache_resource
+def get_working_pipeline():
+    return FixedSF311Pipeline()
+
+pipeline = get_working_pipeline()
+
+def create_simple_line_chart(data: pd.DataFrame) -> go.Figure:
+    """Create simple working line chart"""
+    fig = go.Figure()
+    
+    if data.empty:
+        fig.add_annotation(
+            text="No data available",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        )
+        return fig
+    
+    # Group by neighborhood and create traces
+    for neighborhood in data['neighborhood'].unique()[:10]:  # Limit to 10 for performance
+        nbhd_data = data[data['neighborhood'] == neighborhood]
+        fig.add_trace(go.Scatter(
+            x=nbhd_data['date'],
+            y=nbhd_data['predicted_requests'],
+            mode='lines+markers',
+            name=neighborhood,
+            hovertemplate='%{y:.0f} requests<extra></extra>'
+        ))
+    
+    fig.update_layout(
+        title="SF311 Predictions by Neighborhood",
+        xaxis_title="Date",
+        yaxis_title="Predicted Requests",
+        height=500
+    )
+    
+    return fig
+
+def create_simple_bar_chart(data: pd.DataFrame) -> go.Figure:
+    """Create simple bar chart"""
+    if data.empty:
+        fig = go.Figure()
+        fig.add_annotation(text="No data available", x=0.5, y=0.5, showarrow=False)
+        return fig
+    
+    # Aggregate by neighborhood
+    neighborhood_totals = data.groupby('neighborhood')['predicted_requests'].sum().sort_values(ascending=True)
+    
+    fig = go.Figure(data=go.Bar(
+        y=neighborhood_totals.index,
+        x=neighborhood_totals.values,
+        orientation='h',
+        marker_color='#3498DB'
+    ))
+    
+    fig.update_layout(
+        title="Total Predicted Requests by Neighborhood",
+        xaxis_title="Predicted Requests",
+        yaxis_title="Neighborhood",
+        height=max(400, len(neighborhood_totals) * 25)
+    )
+    
+    return fig
+
+def load_working_data():
+    """Load data using the working pipeline"""
+    try:
+        with st.spinner("Loading SF311 data with enhanced pipeline..."):
+            # Use the working pipeline
+            predictions = pipeline.run_full_fixed_pipeline(
+                days_back=365,  # Reduced for faster loading
+                prediction_days=30
+            )
+            
+            if not predictions.empty:
+                st.session_state.working_data = predictions
+                st.session_state.working_neighborhoods = sorted(predictions['neighborhood'].unique())
+                st.session_state.last_working_refresh = datetime.now()
+                
+                # Save predictions
+                try:
+                    saved_files = pipeline.save_predictions_enhanced(predictions, "output")
+                    st.success(f"Data loaded! {len(predictions)} records from {len(st.session_state.working_neighborhoods)} neighborhoods")
+                    with st.expander("Files saved"):
+                        st.write(f"CSV: {saved_files['csv_path']}")
+                        st.write(f"JSON: {saved_files['json_path']}")
+                except Exception as e:
+                    st.success(f"Data loaded! {len(predictions)} records from {len(st.session_state.working_neighborhoods)} neighborhoods")
+                    st.info(f"Note: File saving encountered an issue: {str(e)}")
+            else:
+                st.error("No data could be loaded")
+                
+    except Exception as e:
+        st.error(f"Pipeline error: {str(e)}")
+        
+        # Provide demo data as fallback
+        st.info("Loading demo data instead...")
+        demo_data = create_demo_data()
+        st.session_state.working_data = demo_data
+        st.session_state.working_neighborhoods = sorted(demo_data['neighborhood'].unique())
+        st.session_state.last_working_refresh = datetime.now()
+
+def create_demo_data():
+    """Create demo data for testing"""
+    neighborhoods = [
+        "Mission", "Castro", "SOMA", "Chinatown", "North Beach", 
+        "Pacific Heights", "Marina", "Haight-Ashbury", "Richmond", 
+        "Sunset", "Tenderloin", "Financial District"
+    ]
+    
+    predictions = []
+    start_date = datetime.now().date()
+    
+    for i in range(30):  # 30 days
+        prediction_date = start_date + timedelta(days=i)
+        
+        for neighborhood in neighborhoods:
+            base_requests = {
+                "Mission": 25, "Castro": 15, "SOMA": 30, "Chinatown": 18,
+                "North Beach": 16, "Pacific Heights": 10, "Marina": 12,
+                "Haight-Ashbury": 20, "Richmond": 14, "Sunset": 16,
+                "Tenderloin": 22, "Financial District": 25
+            }.get(neighborhood, 15)
+            
+            # Add some variation
+            variation = np.random.normal(0, 0.2)
+            predicted_requests = max(1, base_requests * (1 + variation))
+            
+            # Weekend adjustment
+            if prediction_date.weekday() in [5, 6]:
+                predicted_requests *= 0.7
+            
+            predictions.append({
+                'date': prediction_date,
+                'neighborhood': neighborhood,
+                'predicted_requests': predicted_requests,
+                'confidence_lower': predicted_requests * 0.8,
+                'confidence_upper': predicted_requests * 1.2
+            })
+    
+    return pd.DataFrame(predictions)
+
+def main():
+    """Main working application"""
+    
+    st.title("Enhanced SF311 Street & Sidewalk Cleaning Predictions")
+    
+    with st.expander("About the Enhanced Pipeline", expanded=False):
+        st.markdown("""
+        **Enhanced Features Implemented:**
+        
+        ✓ **Robust Model Selection**: Automatic backtesting selects best model for each neighborhood
+        
+        ✓ **MASE Metrics**: More reliable accuracy measurement for sparse data
+        
+        ✓ **Optimized ML Models**: Configured for Replit environment with proper parameters
+        
+        ✓ **Enhanced Validation**: Guards against indexing issues and validates predictions
+        
+        ✓ **Multi-Format Output**: Saves as both CSV and JSON with metadata
+        
+        ✓ **Smart Error Handling**: Graceful fallbacks when models fail to converge
+        """)
+    
+    st.markdown("---")
+    
+    # Sidebar controls
+    with st.sidebar:
+        st.header("Dashboard Controls")
+        
+        if st.button("Load Enhanced Data", type="primary"):
+            load_working_data()
+        
+        if st.session_state.last_working_refresh:
+            st.caption(f"Last updated: {st.session_state.last_working_refresh.strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        st.markdown("---")
+        
+        # Show data info if loaded
+        if st.session_state.working_data is not None:
+            data = st.session_state.working_data
+            st.subheader("Data Summary")
+            st.metric("Total Records", f"{len(data):,}")
+            st.metric("Neighborhoods", f"{data['neighborhood'].nunique()}")
+            st.metric("Prediction Days", f"{data['date'].nunique()}")
+            
+            # Date range filter
+            st.subheader("Date Range")
+            min_date = pd.to_datetime(data['date']).min().date()
+            max_date = pd.to_datetime(data['date']).max().date()
+            
+            date_range = st.date_input(
+                "Select dates:",
+                value=(min_date, max_date),
+                min_value=min_date,
+                max_value=max_date
+            )
+            
+            # Neighborhood filter
+            st.subheader("Neighborhoods")
+            selected_neighborhoods = st.multiselect(
+                "Select neighborhoods:",
+                options=st.session_state.working_neighborhoods,
+                default=st.session_state.working_neighborhoods[:5]
+            )
+            
+            # Chart type
+            chart_type = st.selectbox("Chart Type:", ["Line Chart", "Bar Chart"])
+        else:
+            st.info("Click 'Load Enhanced Data' to get started!")
+            date_range = None
+            selected_neighborhoods = []
+            chart_type = "Line Chart"
+    
+    # Main content
+    if st.session_state.working_data is None:
+        st.info("Click 'Load Enhanced Data' in the sidebar to see the enhanced prediction pipeline in action!")
+        return
+    
+    # Filter data
+    filtered_data = st.session_state.working_data.copy()
+    
+    if date_range and len(date_range) == 2:
+        start_date, end_date = date_range
+        filtered_data['date'] = pd.to_datetime(filtered_data['date'])
+        mask = (filtered_data['date'].dt.date >= start_date) & (filtered_data['date'].dt.date <= end_date)
+        filtered_data = filtered_data[mask]
+    
+    if selected_neighborhoods:
+        filtered_data = filtered_data[filtered_data['neighborhood'].isin(selected_neighborhoods)]
+    
+    if filtered_data.empty:
+        st.warning("No data matches the current filters")
+        return
+    
+    # Display chart
+    st.subheader(f"{chart_type} - Enhanced Predictions")
+    
+    if chart_type == "Line Chart":
+        fig = create_simple_line_chart(filtered_data)
+    else:
+        fig = create_simple_bar_chart(filtered_data)
+    
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Summary metrics
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        total_requests = filtered_data['predicted_requests'].sum()
+        st.metric("Total Predicted", f"{total_requests:,.0f}")
+    
+    with col2:
+        avg_requests = filtered_data['predicted_requests'].mean()
+        st.metric("Average Daily", f"{avg_requests:.1f}")
+    
+    with col3:
+        peak_requests = filtered_data['predicted_requests'].max()
+        st.metric("Peak Daily", f"{peak_requests:.0f}")
+    
+    with col4:
+        if 'confidence_lower' in filtered_data.columns:
+            avg_uncertainty = (filtered_data['confidence_upper'] - filtered_data['confidence_lower']).mean()
+            st.metric("Avg Uncertainty", f"±{avg_uncertainty/2:.1f}")
+    
+    # Data quality metrics
+    st.markdown("---")
+    st.subheader("Data Quality Validation")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        total_records = len(filtered_data)
+        valid_predictions = (filtered_data['predicted_requests'] >= 0).sum()
+        st.metric("Non-negative Predictions", f"{valid_predictions}/{total_records}")
+    
+    with col2:
+        if 'confidence_lower' in filtered_data.columns and 'confidence_upper' in filtered_data.columns:
+            valid_intervals = ((filtered_data['confidence_lower'] <= filtered_data['predicted_requests']) & 
+                             (filtered_data['predicted_requests'] <= filtered_data['confidence_upper'])).sum()
+            st.metric("Valid Confidence Intervals", f"{valid_intervals}/{total_records}")
+    
+    # Show data table
+    with st.expander("Detailed Data", expanded=False):
+        display_data = filtered_data.copy()
+        display_data['date'] = pd.to_datetime(display_data['date']).dt.strftime('%Y-%m-%d')
+        display_data = display_data.round(2)
+        
+        st.dataframe(display_data, use_container_width=True)
+        
+        # Download button
+        csv_data = filtered_data.to_csv(index=False)
+        st.download_button(
+            label="Download Data as CSV",
+            data=csv_data,
+            file_name=f"sf311_predictions_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            mime="text/csv"
+        )
+
+if __name__ == "__main__":
+    main()
