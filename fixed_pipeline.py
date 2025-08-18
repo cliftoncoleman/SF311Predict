@@ -276,6 +276,12 @@ class FixedSF311Pipeline:
         if len(df_nbhd) < val_days + 60:
             return {"model_type": "seasonal_naive", "model": None, "score": float('inf')}
         
+        # Debug: Log the actual training data length
+        total_days = len(df_nbhd)
+        train_days = total_days - val_days
+        years_of_training = train_days / 365.25
+        print(f"  Training data: {train_days} days ({years_of_training:.1f} years) for neighborhood model")
+        
         # Fixed indexing as suggested
         train_df = df_nbhd.iloc[:-val_days].copy()
         val_df = df_nbhd.iloc[-val_days:].copy()
@@ -658,6 +664,10 @@ class FixedSF311Pipeline:
         df = df.sort_values('date').reset_index(drop=True)
         y_col = 'cases'
         
+        original_length = len(df)
+        date_range = f"{df['date'].min().date()} to {df['date'].max().date()}"
+        print(f"    Feature building: {original_length} days input ({date_range})")
+        
         # Expanded lag features (break fixed point)
         for L in [1, 2, 3, 4, 5, 6, 7, 14, 21, 28]:
             df[f"lag_{L}"] = df[y_col].shift(L)
@@ -694,6 +704,12 @@ class FixedSF311Pipeline:
         
         # Drop rows with critical missing features but keep more data
         df = df.dropna(subset=['lag_1'])  # Only require lag_1, not lag_7
+        
+        final_length = len(df)
+        data_lost = original_length - final_length
+        final_years = final_length / 365.25
+        print(f"    After feature building: {final_length} days ({final_years:.1f} years), lost {data_lost} days")
+        
         return df
     
     def generate_fixed_predictions(self, 
