@@ -92,6 +92,18 @@ def main():
             ["Daily", "Weekly", "Monthly"],
             index=0
         )
+        
+        # Historical comparison toggle
+        st.subheader("📊 Historical Comparison")
+        show_historical = st.checkbox("Show actual vs predicted", value=True)
+        if show_historical:
+            historical_days = st.slider(
+                "Historical period (days):",
+                min_value=30,
+                max_value=180,
+                value=90,
+                step=30
+            )
     
     # Main content area
     if st.session_state.data is None:
@@ -117,8 +129,14 @@ def main():
                 aggregation_level.lower()
             )
             
+            # Get historical data for comparison if requested
+            historical_data = None
+            if 'show_historical' in locals() and show_historical:
+                with st.spinner("Loading historical comparison data..."):
+                    historical_data = api_client.get_historical_comparison_data(historical_days)
+            
             # Main dashboard layout
-            display_dashboard(processed_data, chart_type, show_confidence_intervals, aggregation_level)
+            display_dashboard(processed_data, chart_type, show_confidence_intervals, aggregation_level, historical_data)
         else:
             st.error("Please select both start and end dates.")
 
@@ -166,7 +184,7 @@ def filter_data(data, start_date, end_date, neighborhoods):
         st.error(f"Error filtering data: {str(e)}")
         return pd.DataFrame()
 
-def display_dashboard(data, chart_type, show_confidence_intervals, aggregation_level):
+def display_dashboard(data, chart_type, show_confidence_intervals, aggregation_level, historical_data=None):
     """Display the main dashboard with charts and metrics"""
     
     # Key metrics row
@@ -174,9 +192,14 @@ def display_dashboard(data, chart_type, show_confidence_intervals, aggregation_l
     
     with col1:
         total_predictions = data['predicted_requests'].sum()
+        delta_text = None
+        if historical_data is not None and not historical_data.empty:
+            historical_total = historical_data['actual_requests'].sum()
+            delta_text = f"{((total_predictions - historical_total) / historical_total * 100):+.1f}% vs recent actual"
         st.metric(
-            label="Total Predicted Requests",
-            value=f"{total_predictions:,.0f}"
+            label="Total Predicted Requests (All Neighborhoods)",
+            value=f"{total_predictions:,.0f}",
+            delta=delta_text
         )
     
     with col2:
@@ -211,9 +234,9 @@ def display_dashboard(data, chart_type, show_confidence_intervals, aggregation_l
         st.subheader("📈 Prediction Trends")
         
         if chart_type == "Line Chart":
-            fig = chart_generator.create_line_chart(data, show_confidence_intervals)
+            fig = chart_generator.create_line_chart(data, show_confidence_intervals, historical_data)
         elif chart_type == "Bar Chart":
-            fig = chart_generator.create_bar_chart(data)
+            fig = chart_generator.create_bar_chart(data, historical_data)
         else:  # Heatmap
             fig = chart_generator.create_heatmap(data)
         

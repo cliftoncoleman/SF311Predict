@@ -11,7 +11,7 @@ class ChartGenerator:
     def __init__(self):
         self.color_palette = px.colors.qualitative.Set3
     
-    def create_line_chart(self, data: pd.DataFrame, show_confidence: bool = True) -> go.Figure:
+    def create_line_chart(self, data: pd.DataFrame, show_confidence: bool = True, historical_data: pd.DataFrame = None) -> go.Figure:
         """Create line chart showing prediction trends over time"""
         try:
             if data.empty:
@@ -58,6 +58,20 @@ class ChartGenerator:
                 marker=dict(size=6)
             ))
             
+            # Add historical actual data if available
+            if historical_data is not None and not historical_data.empty:
+                historical_daily = historical_data.groupby('date')['actual_requests'].sum().reset_index()
+                historical_daily['date'] = pd.to_datetime(historical_daily['date'])
+                
+                fig.add_trace(go.Scatter(
+                    x=historical_daily['date'],
+                    y=historical_daily['actual_requests'],
+                    mode='lines+markers',
+                    name='Actual Requests (Historical)',
+                    line=dict(color='#E74C3C', width=3, dash='dot'),
+                    marker=dict(size=6, symbol='diamond')
+                ))
+            
             # Add individual neighborhood lines (top 5 by total requests)
             top_neighborhoods = data.groupby('neighborhood')['predicted_requests'].sum().nlargest(5).index
             
@@ -94,7 +108,7 @@ class ChartGenerator:
         except Exception as e:
             return self._create_error_chart(f"Error creating line chart: {str(e)}")
     
-    def create_bar_chart(self, data: pd.DataFrame) -> go.Figure:
+    def create_bar_chart(self, data: pd.DataFrame, historical_data: pd.DataFrame = None) -> go.Figure:
         """Create bar chart showing predictions by neighborhood"""
         try:
             if data.empty:
@@ -103,17 +117,56 @@ class ChartGenerator:
             # Aggregate by neighborhood
             neighborhood_totals = data.groupby('neighborhood')['predicted_requests'].sum().sort_values(ascending=True)
             
-            fig = go.Figure(data=[
-                go.Bar(
-                    y=neighborhood_totals.index,
-                    x=neighborhood_totals.values,
+            # Add historical data if available
+            if historical_data is not None and not historical_data.empty:
+                historical_totals = historical_data.groupby('neighborhood')['actual_requests'].sum()
+                
+                # Combine the data
+                comparison_df = pd.DataFrame({
+                    'predicted': neighborhood_totals,
+                    'actual': historical_totals
+                }).fillna(0).sort_values('predicted', ascending=True)
+                
+                fig = go.Figure()
+                
+                # Add predicted bars
+                fig.add_trace(go.Bar(
+                    y=comparison_df.index,
+                    x=comparison_df['predicted'],
                     orientation='h',
+                    name='Predicted',
                     marker_color='#3498DB',
-                    text=neighborhood_totals.values,
+                    text=comparison_df['predicted'],
                     textposition='outside',
                     texttemplate='%{text:.0f}'
-                )
-            ])
+                ))
+                
+                # Add actual bars
+                fig.add_trace(go.Bar(
+                    y=comparison_df.index,
+                    x=comparison_df['actual'],
+                    orientation='h',
+                    name='Actual (Historical)',
+                    marker_color='#E74C3C',
+                    opacity=0.7,
+                    text=comparison_df['actual'],
+                    textposition='outside',
+                    texttemplate='%{text:.0f}'
+                ))
+                
+                fig.update_layout(barmode='group')
+            else:
+                fig = go.Figure(data=[
+                    go.Bar(
+                        y=neighborhood_totals.index,
+                        x=neighborhood_totals.values,
+                        orientation='h',
+                        marker_color='#3498DB',
+                        text=neighborhood_totals.values,
+                        textposition='outside',
+                        texttemplate='%{text:.0f}'
+                    )
+                ])
             
             fig.update_layout(
                 title="Total Predicted Requests by Neighborhood",

@@ -134,6 +134,16 @@ class APIClient:
             st.error(f"Error processing neighborhoods data: {str(e)}")
             return None
     
+    def get_historical_comparison_data(self, days_back: int = 90) -> Optional[pd.DataFrame]:
+        """Get historical actual data for comparison with predictions"""
+        try:
+            from data_pipeline import SF311DataPipeline
+            pipeline = SF311DataPipeline()
+            return pipeline.get_historical_vs_predicted(days_back)
+        except Exception as e:
+            st.error(f"Error getting historical comparison data: {str(e)}")
+            return None
+
     def get_historical_data(self, start_date: str = None, end_date: str = None) -> Optional[pd.DataFrame]:
         """Fetch historical SF311 data for comparison"""
         params = {

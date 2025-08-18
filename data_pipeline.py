@@ -301,7 +301,7 @@ class SF311DataPipeline:
         return pd.DataFrame(predictions)
     
     def run_full_pipeline(self, 
-                         days_back: int = 180,
+                         days_back: int = 1095,  # 3 years
                          prediction_days: int = 30) -> pd.DataFrame:
         """Run the complete data pipeline using your approach"""
         
@@ -312,6 +312,34 @@ class SF311DataPipeline:
         predictions = self.generate_predictions(historical_data, prediction_days)
         
         return predictions
+    
+    def get_historical_vs_predicted(self, days_back: int = 90) -> pd.DataFrame:
+        """Get historical actual data for comparison with predictions"""
+        try:
+            # Fetch recent historical data
+            historical_data = self.fetch_historical_data(start_days=days_back + 30)
+            
+            if historical_data.empty:
+                return pd.DataFrame()
+            
+            # Get the last N days as "actual" data
+            end_date = historical_data['date'].max()
+            start_date = end_date - pd.Timedelta(days=days_back)
+            
+            recent_data = historical_data[
+                (pd.to_datetime(historical_data['date']) >= start_date) & 
+                (pd.to_datetime(historical_data['date']) <= end_date)
+            ].copy()
+            
+            # Rename for clarity
+            recent_data = recent_data.rename(columns={'cases': 'actual_requests'})
+            recent_data['data_type'] = 'actual'
+            
+            return recent_data
+            
+        except Exception as e:
+            st.error(f"Error fetching historical comparison data: {str(e)}")
+            return pd.DataFrame()
     
     def _run_advanced_forecasting(self, historical_data: pd.DataFrame, prediction_days: int = 30) -> pd.DataFrame:
         """Run your advanced ML forecasting pipeline"""
@@ -336,8 +364,8 @@ class SF311DataPipeline:
                 nbhd_data = historical_data[historical_data['neighborhood'] == neighborhood].copy()
                 nbhd_data = nbhd_data.sort_values('date').reset_index(drop=True)
                 
-                # Skip if insufficient data
-                if len(nbhd_data) < 60:
+                # Skip if insufficient data (but still include neighborhood)
+                if len(nbhd_data) < 30:
                     # Use simple baseline for neighborhoods with little data
                     forecast = self._simple_neighborhood_forecast(neighborhood, nbhd_data, prediction_days)
                     all_forecasts.append(forecast)
@@ -349,7 +377,7 @@ class SF311DataPipeline:
                 # Build features
                 nbhd_features = self._build_ml_features(nbhd_data)
                 
-                if nbhd_features.empty or len(nbhd_features) < 30:
+                if nbhd_features.empty or len(nbhd_features) < 15:
                     forecast = self._simple_neighborhood_forecast(neighborhood, nbhd_data, prediction_days)
                     all_forecasts.append(forecast)
                     continue
