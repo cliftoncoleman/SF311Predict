@@ -1,0 +1,405 @@
+Drop‑in code (put this in your data‑pull/tidy step)
+import pandas as pd
+from collections import Counter, defaultdict
+
+# Broad candidate list — we’ll only use those that actually exist in your file
+CANDIDATE_NEIGHBOR_COLS = [
+    "neighborhood",                      # common custom/derived
+    "neighborhoods",                     # some exports
+    "neighborhood_district",             # sometimes present
+    "neighborhoods_analysis_boundaries", # present on some SF datasets
+    "neighborhoods_sffind_boundaries",   # present on some SF datasets
+]
+
+def list_neighborhood_like_columns(df: pd.DataFrame):
+    # Anything in our candidate list that exists + any column with 'neigh' in its name
+    by_name = [c for c in CANDIDATE_NEIGHBOR_COLS if c in df.columns]
+    fuzzy = [c for c in df.columns if "neigh" in c.lower()]
+    # Preserve order; dedupe
+    seen, out = set(), []
+    for c in by_name + fuzzy:
+        if c not in seen:
+            seen.add(c); out.append(c)
+    return out
+
+def _normalize_text(s):
+    if pd.isna(s): return None
+    txt = " ".join(str(s).strip().split())
+    return txt.title()
+
+def _build_crosswalk(df, primary, alternate):
+    both = df[[primary, alternate]].dropna()
+    pairs = Counter(zip(both[alternate].map(_normalize_text), both[primary].map(_normalize_text)))
+    by_alt = defaultdict(lambda: Counter())
+    for (alt_val, prim_val), cnt in pairs.items():
+        by_alt[alt_val][prim_val] += cnt
+    # pick most common primary for each alternate
+    return {alt: prim_counts.most_common(1)[0][0] for alt, prim_counts in by_alt.items()}
+
+def coalesce_neighborhoods(df: pd.DataFrame, prefer=None):
+    cols = list_neighborhood_like_columns(df) if prefer is None else [c for c in prefer if c in df.columns]
+    if not cols:
+        raise ValueError("No neighborhood-like columns found. Check your file and/or derive one earlier in the pipeline.")
+    primary, *alternates = cols
+    tidy = df.copy()
+    for c in cols:
+        tidy[c] = tidy[c].map(_normalize_text)
+
+    out = tidy[primary].copy()
+    crosswalks = {alt: _build_crosswalk(tidy, primary, alt) for alt in alternates}
+    missing = out.isna()
+    for alt in alternates:
+        if not missing.any(): break
+        mapped = tidy.loc[missing, alt].map(crosswalks.get(alt, {}))
+        out.loc[mapped.index] = mapped
+        missing = out.isna()
+
+    return out.rename("neighborhood"), {
+        "primary": primary,
+        "alternates_used": alternates,
+        "coverage_after_pct": float(out.notna().mean()*100),
+    }
+
+# === Usage in your tidy step ===
+# df_raw = <your API pull dataframe>
+neigh_cols = list_neighborhood_like_columns(df_raw)
+print("Neighborhood-like columns I found:", neigh_cols)
+
+df_raw["neighborhood"], diag = coalesce_neighborhoods(df_raw, prefer=neigh_cols)
+print("Using primary:", diag["primary"], "| alternates:", diag["alternates_used"], "| coverage %:", round(diag["coverage_after_pct"],1))
+
+# Now aggregate daily
+df_tidy = (df_raw
+    .assign(date=pd.to_datetime(df_raw["requested_datetime"]).dt.date)
+    .groupby(["date","neighborhood"], as_index=False)
+    .size()
+    .rename(columns={"size":"cases"}))
+df_tidy.to_csv("sf311_street_sidewalk_daily_tidy.csv", index=False)
+
+TL;DR
+
+Those specific names were examples—you don’t need them.
+
+The snippet above auto-detects any neighborhood-like column in your file and standardizes to one neighborhood field so your forecast script runs unchanged.
+
+You said:
+no you're right these exist. Here is the issue analysis_neighborhood is a broader term like Tenderloin. neighborhoods_sffind_boundaries gives you a specific like Civic Center or Lower Nob Hill. When it looks at these names it then give sme a bunch of small neighborhoods
+ChatGPT said:
+Thought for 21s
+
+Got it—you're seeing fragmentation because neighborhoods_sffind_boundaries is micro‑level while neighborhoods_analysis_boundaries is coarse. When blanks in the coarse column get backfilled from the micro column, you end up mixing vocabularies and your model explodes into lots of tiny neighborhoods.
+
+What you want
+
+Pick one grain (usually the Analysis Boundaries), and map all micro names to their parent before aggregating. Never mix.
+
+Below is a drop‑in that:
+
+Learns a parent mapping from SFFind → Analysis using rows where both exist.
+
+Creates a single neighborhood column at the chosen grain.
+
+(Optional) Collapses rare categories to Other (<parent>).
+
+Writes the learned crosswalk to CSV so you can review.
+
+Drop‑in code
+import pandas as pd
+from collections import Counter, defaultdict
+
+PRIMARY = "neighborhoods_analysis_boundaries"     # coarse, e.g. Tenderloin
+FINE    = "neighborhoods_sffind_boundaries"       # micro, e.g. Civic Center, Lower Nob Hill
+DIST    = "neighborhood_district"                 # last-resort fallback (if present)
+
+def _norm(s):
+    if pd.isna(s): return None
+    return " ".join(str(s).strip().split()).title()
+
+def learn_micro_to_parent(df: pd.DataFrame, parent_col=PRIMARY, micro_col=FINE,
+                          min_votes=1) -> dict:
+    """
+    Learn a mapping from micro → parent using co-occurrence counts where both columns are present.
+    For each micro value, pick the parent with the highest co-occurrence.
+    """
+    have_both = df[[parent_col, micro_col]].dropna()
+    if have_both.empty:
+        return {}
+
+    pairs = Counter(zip(have_both[micro_col].map(_norm), have_both[parent_col].map(_norm)))
+    by_micro = defaultdict(lambda: Counter())
+    for (micro, parent), cnt in pairs.items():
+        by_micro[micro][parent] += cnt
+
+    mapping = {}
+    for micro, parent_counts in by_micro.items():
+        parent, votes = parent_counts.most_common(1)[0]
+        if votes >= min_votes:
+            mapping[micro] = parent
+    return mapping
+
+def coalesce_to_analysis(df: pd.DataFrame,
+                         parent_col=PRIMARY,
+                         micro_col=FINE,
+                         district_col=DIST,
+                         collapse_rare=False,
+                         rare_threshold=100):
+    """
+    Produce a single 'neighborhood' column using ANALYSIS boundaries only.
+    - Keep parent when present.
+    - If parent is missing but micro present, map micro → parent via learned crosswalk.
+    - If still missing and district present, learn district → parent and use that.
+    - Optionally collapse rare parents to 'Other (<district>)' or 'Other'.
+    Returns: df with 'neighborhood', and (crosswalk_df, diagnostics)
+    """
+    cols_present = [c for c in [parent_col, micro_col, district_col] if c in df.columns]
+    if parent_col not in cols_present and micro_col not in cols_present:
+        raise ValueError("Need at least one of the analysis or sffind columns to coalesce.")
+
+    work = df.copy()
+    for c in cols_present:
+        work[c] = work[c].map(_norm)
+
+    # Learn micro -> parent
+    micro_map = learn_micro_to_parent(work, parent_col=parent_col, micro_col=micro_col) if micro_col in cols_present else {}
+
+    # Start with parent
+    out = work[parent_col].copy() if parent_col in cols_present else pd.Series([None]*len(work), index=work.index, dtype=object)
+
+    # Fill from micro via mapping
+    if micro_map:
+        need = out.isna() & work[micro_col].notna()
+        mapped = work.loc[need, micro_col].map(micro_map)
+        out.loc[mapped.index] = mapped
+
+    # If still missing and district exists, learn simple district -> most common parent
+    dist_map = {}
+    if district_col in cols_present:
+        both = work[[district_col, parent_col]].dropna()
+        if not both.empty:
+            counts = Counter(zip(both[district_col], both[parent_col]))
+            by_d = defaultdict(lambda: Counter())
+            for (d, p), cnt in counts.items():
+                by_d[d][p] += cnt
+            dist_map = {d: pcs.most_common(1)[0][0] for d, pcs in by_d.items()}
+
+        need = out.isna() & work.get(district_col, pd.Series(index=work.index)).notna()
+        if not dist_map and parent_col in cols_present:
+            # If we didn't learn a dist_map (no co-occurrence), fall back to the most common parent overall
+            common_parent = work[parent_col].dropna().mode()
+            common_parent = common_parent.iloc[0] if not common_parent.empty else None
+            out.loc[need] = common_parent
+        else:
+            out.loc[need] = work.loc[need, district_col].map(dist_map)
+
+    out = out.map(_norm)
+
+    diagnostics = {
+        "target_vocab": "analysis_boundaries",
+        "filled_from_micro": int(((df.get(parent_col) != out) & df.get(parent_col).isna()).sum()) if parent_col in df else None,
+        "still_missing": int(out.isna().sum()),
+        "unique_neighborhoods": int(out.dropna().nunique()),
+    }
+
+    # Optional: collapse rare parents to 'Other' (or bucket by district if present)
+    if collapse_rare:
+        counts = out.value_counts(dropna=True)
+        rare = set(counts[counts < rare_threshold].index)
+        if rare:
+            if district_col in cols_present:
+                # tag as Other (<district>) where possible
+                other_labels = df[district_col].map(lambda d: f"Other ({_norm(d)})" if pd.notna(d) else "Other")
+                out = out.where(~out.isin(rare), other_labels)
+            else:
+                out = out.where(~out.isin(rare), "Other")
+            diagnostics["collapsed_rare_count"] = len(rare)
+
+    # Build crosswalk dataframe for auditing
+    rows = []
+    for m, p in sorted(micro_map.items()):
+        rows.append({"source_column": micro_col, "source_value": m, "mapped_parent": p})
+    for d, p in sorted(dist_map.items
+
+You said:
+let's remove district because these can include multiple nighborhoods. Everything should default to analysis_neighborhoods. Have it learn the analysis_neighborhoods from eighborhoods_sffind_boundaries if only eighborhoods_sffind_boundaries exists.  What is the best way to handle blanks? 
+ChatGPT said:
+Thought for 11s
+
+Great call—let’s lock everything to the Analysis Boundaries vocabulary and stop the micro‑neighborhood explosion.
+
+What you asked for
+
+Remove district entirely ✅
+
+Always default to neighborhoods_analysis_boundaries ✅
+
+If analysis is missing but sffind exists, learn a mapping from SFFind → Analysis ✅
+
+How to handle blanks ✅ (recommendations + options below)
+
+Drop‑in coalescer (no district; Analysis‑only vocabulary)
+import pandas as pd
+from collections import Counter, defaultdict
+from typing import Optional, Dict
+
+ANALYSIS = "neighborhoods_analysis_boundaries"      # coarse (target vocab)
+SFFIND   = "neighborhoods_sffind_boundaries"        # micro (source)
+
+def _norm(s):
+    if pd.isna(s): return None
+    return " ".join(str(s).strip().split()).title()
+
+def learn_sffind_to_analysis(df: pd.DataFrame,
+                             analysis_col: str = ANALYSIS,
+                             sffind_col: str = SFFIND,
+                             min_votes: int = 1) -> Dict[str, str]:
+    """
+    Learn mapping SFFind -> Analysis using rows where BOTH columns exist.
+    For each SFFind value, pick the Analysis parent with the highest co-occurrence.
+    """
+    use_cols = [c for c in (analysis_col, sffind_col) if c in df.columns]
+    if set([analysis_col, sffind_col]) - set(use_cols):
+        return {}
+
+    both = df[[analysis_col, sffind_col]].dropna()
+    if both.empty:
+        return {}
+
+    pairs = Counter(zip(both[sffind_col].map(_norm), both[analysis_col].map(_norm)))
+    by_micro = defaultdict(lambda: Counter())
+    for (micro, parent), cnt in pairs.items():
+        by_micro[micro][parent] += cnt
+
+    mapping = {}
+    for micro, parent_counts in by_micro.items():
+        parent, votes = parent_counts.most_common(1)[0]
+        if votes >= min_votes:
+            mapping[micro] = parent
+    return mapping
+
+def coalesce_to_analysis(df: pd.DataFrame,
+                         analysis_col: str = ANALYSIS,
+                         sffind_col: str = SFFIND,
+                         external_crosswalk: Optional[Dict[str, str]] = None,
+                         fill_blanks: str = "Unknown"):
+    """
+    Produce a single 'neighborhood' column in the *Analysis Boundaries* vocabulary.
+
+    Rules:
+      1) If analysis_col exists & non-blank -> use it.
+      2) Else if sffind_col exists -> map via learned crosswalk (or external_crosswalk if provided).
+      3) Otherwise -> blank handling (see fill_blanks).
+
+    Parameters
+    ----------
+    external_crosswalk : dict or None
+        Optional prebuilt SFFind->Analysis mapping (used if no in-file cooccurrence).
+    fill_blanks : {"Unknown", None, "drop"}
+        - "Unknown": fill blanks with literal "Unknown" (safe for grouping, avoids leakage).
+        - None: leave as NaN (you can drop later).
+        - "drop": drop rows with unresolved neighborhood.
+
+    Returns
+    -------
+    neighborhood : pd.Series (Analysis-only values)
+    diagnostics  : dict with counts & sample unmapped values
+    crosswalk_df : pd.DataFrame of the mapping used (for audit / saving to CSV)
+    """
+    cols_present = [c for c in (analysis_col, sffind_col) if c in df.columns]
+    if not cols_present:
+        raise ValueError("No neighborhood columns found. Need at least one of: "
+                         f"{analysis_col} or {sffind_col}")
+
+    work = df.copy()
+    for c in cols_present:
+        work[c] = work[c].map(_norm)
+
+    # Start with analysis where present
+    if analysis_col in work.columns:
+        out = work[analysis_col].copy()
+    else:
+        out = pd.Series([None]*len(work), index=work.index, dtype=object)
+
+    # Build/choose crosswalk for SFFind -> Analysis
+    learned = learn_sffind_to_analysis(work, analysis_col=analysis_col, sffind_col=sffind_col)
+    # If no learned mappings (e.g., file only has SFFind, no Analysis anywhere), use external if provided
+    xwalk = learned or (external_crosswalk or {})
+
+    # Fill where analysis is blank but sffind exists and is mappable
+    if sffind_col in work.columns:
+        need = out.isna() & work[sffind_col].notna()
+        mapped = work.loc[need, sffind_col].map(xwalk)
+        out.loc[mapped.index] = mapped
+
+    # Handle blanks
+    unresolved_mask = out.isna()
+    if unresolved_mask.any():
+        if fill_blanks == "Unknown":
+            out.loc[unresolved_mask] = "Unknown"
+        elif fill_blanks == "drop":
+            out = out[~unresolved_mask]
+        elif fill_blanks is None:
+            pass  # keep NaN
+        else:
+            raise ValueError("fill_blanks must be one of {'Unknown', None, 'drop'}")
+
+    out = out.map(_norm)
+
+    # Diagnostics + crosswalk dataframe
+    unmapped_examples = []
+    if sffind_col in work.columns:
+        # Values that appeared in sffind but are not in mapping AND analysis was blank
+        need = df.get(analysis_col) is None or df[analysis_col].isna()
+        if isinstance(need, bool):
+            need = pd.Series([need]*len(work), index=work.index)
+        candidate = work.loc[need, sffind_col]
+        if candidate.notna().any():
+            missing_vals = sorted(set(candidate.dropna().unique()) - set(xwalk.keys()))
+            unmapped_examples = missing_vals[:15]
+
+    diagnostics = {
+        "target_vocab": "analysis_boundaries",
+        "analysis_col_present": analysis_col in work.columns,
+        "sffind_col_present": sffind_col in work.columns,
+        "learned_pairs": len(learned),
+        "used_external_crosswalk": bool(external_crosswalk) and not learned,
+        "unique_final_neighborhoods": int(pd.Series(out).dropna().nunique()),
+        "unresolved_count": int(pd.Series(out).isna().sum() if fill_blanks is None else 0),
+        "unmapped_sffind_examples": unmapped_examples,
+    }
+
+    crosswalk_rows = [{"sffind": k, "analysis": v, "source": "learned"} for k, v in learned.items()]
+    if external_crosswalk:
+        for k, v in external_crosswalk.items():
+            crosswalk_rows.append({"sffind": k, "analysis": v, "source": "external"})
+    crosswalk_df = pd.DataFrame(crosswalk_rows, columns=["sffind", "analysis", "source"]).drop_duplicates()
+
+    return out.rename("neighborhood"), diagnostics, crosswalk_df
+
+How to use it in your tidy step
+# df_raw = <DataFrame from SF311 API>
+neighborhood_series, diag, xwalk_df = coalesce_to_analysis(
+    df_raw,
+    analysis_col="neighborhoods_analysis_boundaries",
+    sffind_col="neighborhoods_sffind_boundaries",
+    external_crosswalk=None,          # or pass a dict if you have one
+    fill_blanks="Unknown"             # options: "Unknown", None, or "drop"
+)
+df_raw["neighborhood"] = neighborhood_series
+
+# Aggregate to daily counts at analysis vocabulary
+df_tidy = (df_raw
+    .assign(date=pd.to_datetime(df_raw["requested_datetime"]).dt.date)
+    .groupby(["date","neighborhood"], as_index=False)
+    .size()
+    .rename(columns={"size":"cases"}))
+
+# Optional: audit the learned mapping
+# xwalk_df.to_csv("sffind_to_analysis_crosswalk.csv", index=False)
+# print(diag)
+
+Best practice for blanks
+
+Blanks usually mean we don’t have enough spatial attribution to trust a neighborhood assignment. For a forecasting pipeline:
+
+Safest (recommended): fill_blanks="Unknown"
+Keeps those requests in the data but isolated as a separate group; they won’t pollute known neighborhoods. You can choose to drop or display “Unknown” in your UI.
