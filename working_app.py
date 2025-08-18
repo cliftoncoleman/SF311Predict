@@ -104,9 +104,11 @@ def load_working_data():
             
             if not predictions.empty:
                 st.session_state.working_data = predictions
-                # Sort neighborhoods by total predicted activity (highest first)
-                neighborhood_totals = predictions.groupby('neighborhood')['predicted_requests'].sum().sort_values(ascending=False)
-                st.session_state.working_neighborhoods = neighborhood_totals.index.tolist()
+                # Sort neighborhoods by uncertainty (lowest uncertainty first)
+                # Calculate average uncertainty (confidence interval width) per neighborhood
+                predictions['uncertainty'] = predictions['confidence_upper'] - predictions['confidence_lower']
+                neighborhood_uncertainty = predictions.groupby('neighborhood')['uncertainty'].mean().sort_values(ascending=True)
+                st.session_state.working_neighborhoods = neighborhood_uncertainty.index.tolist()
                 st.session_state.last_working_refresh = datetime.now()
                 
                 # Save predictions
@@ -241,8 +243,8 @@ def main():
             selected_neighborhoods = st.multiselect(
                 "Select neighborhoods:",
                 options=st.session_state.working_neighborhoods,
-                default=st.session_state.working_neighborhoods[:5],  # Top 5 by predicted activity
-                help="Neighborhoods are ordered by total predicted cleaning requests (highest first)"
+                default=st.session_state.working_neighborhoods[:5],  # Top 5 by lowest uncertainty
+                help="Neighborhoods are ordered by prediction uncertainty (most reliable first)"
             )
             
             # Chart type
