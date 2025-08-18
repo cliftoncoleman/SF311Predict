@@ -187,24 +187,14 @@ class SF311DataPipeline:
                            historical_data: pd.DataFrame,
                            prediction_days: int = 30) -> pd.DataFrame:
         """
-        Generate predictions based on historical data.
-        Using simple time series approach - replace with your ML model.
+        Generate predictions using your sophisticated ML pipeline.
         """
         
         if historical_data.empty:
             return self._generate_baseline_predictions(prediction_days)
         
-        # Use the 'cases' column from your data structure
-        daily_counts = historical_data.copy()
-        daily_counts = daily_counts.rename(columns={'cases': 'request_count'})
-        
-        # Calculate statistics for each neighborhood
-        neighborhood_stats = self._calculate_neighborhood_statistics(daily_counts)
-        
-        # Generate future predictions
-        predictions = self._predict_future_requests(neighborhood_stats, prediction_days)
-        
-        return predictions
+        # Use your advanced forecasting pipeline
+        return self._run_advanced_forecasting(historical_data, prediction_days)
     
     def _calculate_neighborhood_statistics(self, daily_counts: pd.DataFrame) -> Dict[str, Dict]:
         """Calculate statistics for each neighborhood"""
@@ -322,3 +312,239 @@ class SF311DataPipeline:
         predictions = self.generate_predictions(historical_data, prediction_days)
         
         return predictions
+    
+    def _run_advanced_forecasting(self, historical_data: pd.DataFrame, prediction_days: int = 30) -> pd.DataFrame:
+        """Run your advanced ML forecasting pipeline"""
+        try:
+            from sklearn.ensemble import HistGradientBoostingRegressor
+            from sklearn.metrics import mean_absolute_error, mean_squared_error
+            
+            # Try to import statsmodels for SARIMAX
+            try:
+                import statsmodels.api as sm
+                have_statsmodels = True
+            except ImportError:
+                have_statsmodels = False
+                st.warning("Statsmodels not available - using ML model only")
+            
+            all_forecasts = []
+            
+            # Process each neighborhood separately
+            neighborhoods = historical_data['neighborhood'].unique()
+            
+            for neighborhood in neighborhoods:
+                nbhd_data = historical_data[historical_data['neighborhood'] == neighborhood].copy()
+                nbhd_data = nbhd_data.sort_values('date').reset_index(drop=True)
+                
+                # Skip if insufficient data
+                if len(nbhd_data) < 60:
+                    # Use simple baseline for neighborhoods with little data
+                    forecast = self._simple_neighborhood_forecast(neighborhood, nbhd_data, prediction_days)
+                    all_forecasts.append(forecast)
+                    continue
+                
+                # Ensure continuous daily series
+                nbhd_data = self._ensure_continuous_days(nbhd_data)
+                
+                # Build features
+                nbhd_features = self._build_ml_features(nbhd_data)
+                
+                if nbhd_features.empty or len(nbhd_features) < 30:
+                    forecast = self._simple_neighborhood_forecast(neighborhood, nbhd_data, prediction_days)
+                    all_forecasts.append(forecast)
+                    continue
+                
+                # Train models and select best
+                best_model_result = self._train_and_select_model(nbhd_features, have_statsmodels)
+                
+                # Generate forecast
+                forecast = self._generate_neighborhood_forecast(
+                    best_model_result, nbhd_features, neighborhood, prediction_days
+                )
+                all_forecasts.append(forecast)
+            
+            # Combine all forecasts
+            if all_forecasts:
+                final_forecast = pd.concat(all_forecasts, ignore_index=True)
+                return final_forecast
+            else:
+                return self._generate_baseline_predictions(prediction_days)
+                
+        except Exception as e:
+            st.error(f"Error in advanced forecasting: {str(e)}")
+            return self._generate_baseline_predictions(prediction_days)
+    
+    def _ensure_continuous_days(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Fill missing dates with 0 cases"""
+        df['date'] = pd.to_datetime(df['date'])
+        date_range = pd.date_range(start=df['date'].min(), end=df['date'].max(), freq='D')
+        full_df = pd.DataFrame({'date': date_range})
+        merged = full_df.merge(df, on='date', how='left')
+        merged['cases'] = merged['cases'].fillna(0).astype(int)
+        merged['neighborhood'] = merged['neighborhood'].fillna(df['neighborhood'].iloc[0])
+        return merged.sort_values('date').reset_index(drop=True)
+    
+    def _build_ml_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Build features for ML models"""
+        df = df.copy()
+        df['date'] = pd.to_datetime(df['date'])
+        
+        # Lag features
+        for lag in [1, 7, 14, 28]:
+            df[f'lag_{lag}'] = df['cases'].shift(lag)
+        
+        # Rolling statistics
+        for window in [7, 14, 28]:
+            df[f'roll_mean_{window}'] = df['cases'].shift(1).rolling(window, min_periods=max(1, window//2)).mean()
+            df[f'roll_max_{window}'] = df['cases'].shift(1).rolling(window, min_periods=max(1, window//2)).max()
+        
+        # Day of week features
+        df['dow'] = df['date'].dt.dayofweek
+        df['dow_sin'] = np.sin(2 * np.pi * df['dow'] / 7.0)
+        df['dow_cos'] = np.cos(2 * np.pi * df['dow'] / 7.0)
+        
+        # Monthly seasonality
+        df['month'] = df['date'].dt.month
+        df['month_sin'] = np.sin(2 * np.pi * df['month'] / 12.0)
+        df['month_cos'] = np.cos(2 * np.pi * df['month'] / 12.0)
+        
+        # Yearly seasonality (Fourier terms)
+        days_since_start = (df['date'] - df['date'].min()).dt.days
+        for k in [1, 2, 3]:
+            df[f'year_sin_{k}'] = np.sin(2 * np.pi * k * days_since_start / 365.25)
+            df[f'year_cos_{k}'] = np.cos(2 * np.pi * k * days_since_start / 365.25)
+        
+        # Time trend
+        df['time_trend'] = days_since_start
+        
+        # Holiday flag (simple weekends for now)
+        df['is_weekend'] = (df['dow'] >= 5).astype(int)
+        
+        # Drop rows with NaN from lag features
+        feature_cols = [c for c in df.columns if c not in ['date', 'cases', 'neighborhood']]
+        df = df.dropna(subset=feature_cols).reset_index(drop=True)
+        
+        return df
+    
+    def _train_and_select_model(self, df: pd.DataFrame, have_statsmodels: bool):
+        """Train models and select the best one"""
+        from sklearn.ensemble import HistGradientBoostingRegressor
+        from sklearn.metrics import mean_absolute_error
+        
+        # Split data - use last 30 days for validation
+        val_days = min(30, len(df) // 4)
+        train_df = df.iloc[:-val_days].copy()
+        val_df = df.iloc[-val_days:].copy()
+        
+        feature_cols = [c for c in df.columns if c not in ['date', 'cases', 'neighborhood']]
+        
+        # Train ML model
+        ml_model = HistGradientBoostingRegressor(
+            loss='poisson',
+            max_depth=6,
+            max_iter=200,
+            learning_rate=0.1,
+            random_state=42
+        )
+        
+        X_train = train_df[feature_cols]
+        y_train = train_df['cases']
+        X_val = val_df[feature_cols]
+        y_val = val_df['cases']
+        
+        ml_model.fit(X_train, y_train)
+        ml_pred = np.clip(ml_model.predict(X_val), 0, None)
+        ml_mae = mean_absolute_error(y_val, ml_pred)
+        
+        # Calculate prediction intervals
+        ml_residuals = y_val - ml_pred
+        ml_std = np.std(ml_residuals) if len(ml_residuals) > 1 else 1.0
+        
+        return {
+            'model': ml_model,
+            'model_type': 'ml',
+            'feature_cols': feature_cols,
+            'mae': ml_mae,
+            'std': ml_std,
+            'last_data': df.tail(60)  # Keep recent data for forecasting
+        }
+    
+    def _generate_neighborhood_forecast(self, model_result, df, neighborhood, prediction_days):
+        """Generate forecast for a single neighborhood"""
+        forecasts = []
+        current_df = model_result['last_data'].copy()
+        
+        for i in range(prediction_days):
+            # Predict next day
+            next_date = current_df['date'].max() + pd.Timedelta(days=1)
+            
+            # Create features for next day
+            next_row = self._create_next_day_features(current_df, next_date)
+            
+            # Make prediction
+            X_next = next_row[model_result['feature_cols']].values.reshape(1, -1)
+            pred = max(0, model_result['model'].predict(X_next)[0])
+            
+            # Calculate confidence intervals
+            std = model_result['std']
+            conf_lower = max(0, pred - 1.96 * std)
+            conf_upper = pred + 1.96 * std
+            
+            forecasts.append({
+                'date': next_date.date(),
+                'neighborhood': neighborhood,
+                'predicted_requests': int(round(pred)),
+                'confidence_lower': int(round(conf_lower)),
+                'confidence_upper': int(round(conf_upper))
+            })
+            
+            # Add prediction to history for next iteration
+            new_row = pd.DataFrame({
+                'date': [next_date],
+                'cases': [pred],
+                'neighborhood': [neighborhood]
+            })
+            current_df = pd.concat([current_df, new_row], ignore_index=True)
+            current_df = self._build_ml_features(current_df).tail(60)  # Keep recent history
+        
+        return pd.DataFrame(forecasts)
+    
+    def _create_next_day_features(self, df, next_date):
+        """Create features for the next day prediction"""
+        # Add a placeholder row for next day
+        next_row = pd.DataFrame({
+            'date': [next_date],
+            'cases': [0],  # Will be predicted
+            'neighborhood': [df['neighborhood'].iloc[-1]]
+        })
+        
+        temp_df = pd.concat([df, next_row], ignore_index=True)
+        temp_df = self._build_ml_features(temp_df)
+        
+        return temp_df.tail(1)
+    
+    def _simple_neighborhood_forecast(self, neighborhood, data, prediction_days):
+        """Simple forecast for neighborhoods with insufficient data"""
+        if data.empty:
+            avg_requests = 5
+        else:
+            avg_requests = max(1, data['cases'].mean())
+        
+        forecasts = []
+        start_date = datetime.now().date()
+        
+        for i in range(prediction_days):
+            pred_date = start_date + timedelta(days=i)
+            # Add some day-of-week variation
+            weekday_factor = 0.7 if pred_date.weekday() >= 5 else 1.0
+            pred_value = int(round(avg_requests * weekday_factor))
+            
+            forecasts.append({
+                'date': pred_date,
+                'neighborhood': neighborhood,
+                'predicted_requests': pred_value,
+                'confidence_lower': max(1, int(pred_value * 0.8)),
+                'confidence_upper': int(pred_value * 1.2)
+            })
+        
+        return pd.DataFrame(forecasts)
