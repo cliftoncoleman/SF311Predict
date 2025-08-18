@@ -23,7 +23,6 @@ if 'working_neighborhoods' not in st.session_state:
 if 'last_working_refresh' not in st.session_state:
     st.session_state.last_working_refresh = None
 
-@st.cache_resource
 def get_working_pipeline():
     return FixedSF311Pipeline()
 
@@ -32,7 +31,6 @@ def clear_cache_and_reload():
     st.cache_resource.clear()
     st.rerun()
 
-@st.cache_resource
 def get_data_processor():
     return DataProcessor()
 
