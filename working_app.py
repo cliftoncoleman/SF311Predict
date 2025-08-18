@@ -104,7 +104,9 @@ def load_working_data():
             
             if not predictions.empty:
                 st.session_state.working_data = predictions
-                st.session_state.working_neighborhoods = sorted(predictions['neighborhood'].unique())
+                # Sort neighborhoods by total predicted activity (highest first)
+                neighborhood_totals = predictions.groupby('neighborhood')['predicted_requests'].sum().sort_values(ascending=False)
+                st.session_state.working_neighborhoods = neighborhood_totals.index.tolist()
                 st.session_state.last_working_refresh = datetime.now()
                 
                 # Save predictions
@@ -239,7 +241,8 @@ def main():
             selected_neighborhoods = st.multiselect(
                 "Select neighborhoods:",
                 options=st.session_state.working_neighborhoods,
-                default=st.session_state.working_neighborhoods[:5]
+                default=st.session_state.working_neighborhoods[:5],  # Top 5 by predicted activity
+                help="Neighborhoods are ordered by total predicted cleaning requests (highest first)"
             )
             
             # Chart type
