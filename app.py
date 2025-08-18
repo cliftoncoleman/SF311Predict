@@ -237,9 +237,9 @@ def display_dashboard(data, chart_type, show_confidence_intervals, aggregation_l
         st.subheader("📈 Prediction Trends")
         
         if chart_type == "Line Chart":
-            fig = chart_generator.create_line_chart(data, show_confidence_intervals, historical_data)
+            fig = chart_generator.create_line_chart(data, show_confidence_intervals, historical_data if historical_data is not None else pd.DataFrame())
         elif chart_type == "Bar Chart":
-            fig = chart_generator.create_bar_chart(data, historical_data)
+            fig = chart_generator.create_bar_chart(data, historical_data if historical_data is not None else pd.DataFrame())
         else:  # Heatmap
             fig = chart_generator.create_heatmap(data)
         

@@ -56,7 +56,7 @@ class SF311DataPipeline:
                 return f
         return self.neighbor_pref_order[0]
 
-    def month_windows(self, start_date: dt.date, end_date: dt.date) -> List[tuple]:
+    def month_windows(self, start_date: dt.date, end_date: dt.date):
         """Generate month windows for data fetching"""
         cur = dt.date(start_date.year, start_date.month, 1)
         end_month = dt.date(end_date.year, end_date.month, 1)
@@ -114,7 +114,7 @@ class SF311DataPipeline:
             offset += self.page_size
 
         if not frames:
-            return pd.DataFrame(columns=[self.time_field, neighborhood_field])
+            return pd.DataFrame({self.time_field: [], neighborhood_field: []})
         return pd.concat(frames, ignore_index=True)
 
     def fetch_historical_data(self, start_days: int = 365) -> pd.DataFrame:
@@ -146,12 +146,9 @@ class SF311DataPipeline:
             raw["neighborhood"] = raw[nbhd_field].fillna("Unknown").astype(str)
             
             # Aggregate to daily counts
-            daily = (
-                raw.groupby(["date", "neighborhood"], as_index=False)
-                   .size()
-                   .rename(columns={"size": "cases"})
-                   .sort_values(["date", "neighborhood"])
-            )
+            daily_counts = raw.groupby(["date", "neighborhood"], as_index=False).size()
+            daily_counts.rename(columns={"size": "cases"}, inplace=True)
+            daily = daily_counts.sort_values(["date", "neighborhood"])
             
             return daily
             
@@ -209,10 +206,13 @@ class SF311DataPipeline:
             std_requests = neighborhood_data['request_count'].std()
             
             # Calculate day-of-week patterns
-            neighborhood_data['date'] = pd.to_datetime(neighborhood_data['date'])
-            neighborhood_data['day_of_week'] = neighborhood_data['date'].dt.dayofweek
-            
-            day_patterns = neighborhood_data.groupby('day_of_week')['request_count'].mean().to_dict()
+            neighborhood_data_copy = neighborhood_data.copy()
+            if len(neighborhood_data_copy) > 0:
+                neighborhood_data_copy['date'] = pd.to_datetime(neighborhood_data_copy['date'])
+                neighborhood_data_copy['day_of_week'] = neighborhood_data_copy['date'].dt.dayofweek
+                day_patterns = neighborhood_data_copy.groupby('day_of_week')['request_count'].mean().to_dict()
+            else:
+                day_patterns = {}
             
             stats[neighborhood] = {
                 'mean': mean_requests if not pd.isna(mean_requests) else 5,
@@ -326,10 +326,9 @@ class SF311DataPipeline:
             end_date = historical_data['date'].max()
             start_date = end_date - pd.Timedelta(days=days_back)
             
-            recent_data = historical_data[
-                (pd.to_datetime(historical_data['date']) >= start_date) & 
-                (pd.to_datetime(historical_data['date']) <= end_date)
-            ].copy()
+            historical_data_dates = pd.to_datetime(historical_data['date'])
+            mask = (historical_data_dates >= start_date) & (historical_data_dates <= end_date)
+            recent_data = historical_data[mask].copy()
             
             # Rename for clarity
             recent_data = recent_data.rename(columns={'cases': 'actual_requests'})
@@ -362,7 +361,7 @@ class SF311DataPipeline:
             
             for neighborhood in neighborhoods:
                 nbhd_data = historical_data[historical_data['neighborhood'] == neighborhood].copy()
-                nbhd_data = nbhd_data.sort_values('date').reset_index(drop=True)
+                nbhd_data = nbhd_data.sort_values(by='date').reset_index(drop=True)
                 
                 # Skip if insufficient data (but still include neighborhood)
                 if len(nbhd_data) < 30:

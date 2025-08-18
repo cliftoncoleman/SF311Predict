@@ -24,7 +24,7 @@ class APIClient:
             
         return headers
     
-    def _make_request(self, endpoint: str, params: dict = None) -> Optional[dict]:
+    def _make_request(self, endpoint: str, params: Optional[dict] = None) -> Optional[dict]:
         """Make API request with error handling"""
         try:
             url = f"{self.base_url}/{endpoint.lstrip('/')}"
@@ -64,7 +64,7 @@ class APIClient:
             st.error(f"Unexpected error: {str(e)}")
             return None
     
-    def get_predictions(self, start_date: str = None, end_date: str = None) -> Optional[pd.DataFrame]:
+    def get_predictions(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> Optional[pd.DataFrame]:
         """Fetch street and sidewalk cleaning predictions"""
         # Use integrated data pipeline instead of external API
         try:
@@ -144,7 +144,7 @@ class APIClient:
             # Suppress error messages as requested by user
             return None
 
-    def get_historical_data(self, start_date: str = None, end_date: str = None) -> Optional[pd.DataFrame]:
+    def get_historical_data(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> Optional[pd.DataFrame]:
         """Fetch historical SF311 data for comparison"""
         params = {
             "service_type": "Street and Sidewalk Cleaning"

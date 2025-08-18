@@ -11,7 +11,7 @@ class ChartGenerator:
     def __init__(self):
         self.color_palette = px.colors.qualitative.Set3
     
-    def create_line_chart(self, data: pd.DataFrame, show_confidence: bool = True, historical_data: pd.DataFrame = None) -> go.Figure:
+    def create_line_chart(self, data: pd.DataFrame, show_confidence: bool = True, historical_data: Optional[pd.DataFrame] = None) -> go.Figure:
         """Create line chart showing prediction trends over time"""
         try:
             if data.empty:
@@ -73,14 +73,16 @@ class ChartGenerator:
                 ))
             
             # Add individual neighborhood lines (top 5 by total requests)
-            top_neighborhoods = data.groupby('neighborhood')['predicted_requests'].sum().nlargest(5).index
+            neighborhood_sums = data.groupby('neighborhood')['predicted_requests'].sum()
+            top_neighborhoods = neighborhood_sums.nlargest(5)
             
-            for i, neighborhood in enumerate(top_neighborhoods):
-                neighborhood_data = data[data['neighborhood'] == neighborhood].groupby('date')['predicted_requests'].sum().reset_index()
+            for i, neighborhood in enumerate(top_neighborhoods.index):
+                neighborhood_data = data[data['neighborhood'] == neighborhood]
+                neighborhood_grouped = neighborhood_data.groupby('date')['predicted_requests'].sum().reset_index()
                 
                 fig.add_trace(go.Scatter(
-                    x=neighborhood_data['date'],
-                    y=neighborhood_data['predicted_requests'],
+                    x=neighborhood_grouped['date'],
+                    y=neighborhood_grouped['predicted_requests'],
                     mode='lines',
                     name=neighborhood,
                     line=dict(color=self.color_palette[i % len(self.color_palette)], width=2),
@@ -108,14 +110,15 @@ class ChartGenerator:
         except Exception as e:
             return self._create_error_chart(f"Error creating line chart: {str(e)}")
     
-    def create_bar_chart(self, data: pd.DataFrame, historical_data: pd.DataFrame = None) -> go.Figure:
+    def create_bar_chart(self, data: pd.DataFrame, historical_data: Optional[pd.DataFrame] = None) -> go.Figure:
         """Create bar chart showing predictions by neighborhood"""
         try:
             if data.empty:
                 return self._create_empty_chart("No data available")
             
             # Aggregate by neighborhood
-            neighborhood_totals = data.groupby('neighborhood')['predicted_requests'].sum().sort_values(ascending=True)
+            neighborhood_totals = data.groupby('neighborhood')['predicted_requests'].sum()
+            neighborhood_totals = neighborhood_totals.sort_values(ascending=True)
             
             # Add historical data if available
             if historical_data is not None and not historical_data.empty:
@@ -198,8 +201,9 @@ class ChartGenerator:
             
             # Limit to top neighborhoods if too many
             if len(heatmap_data) > 20:
-                top_neighborhoods = data.groupby('neighborhood')['predicted_requests'].sum().nlargest(20).index
-                heatmap_data = heatmap_data.loc[top_neighborhoods]
+                neighborhood_totals = data.groupby('neighborhood')['predicted_requests'].sum()
+                top_neighborhoods_series = neighborhood_totals.nlargest(20)
+                heatmap_data = heatmap_data.loc[top_neighborhoods_series.index]
             
             fig = go.Figure(data=go.Heatmap(
                 z=heatmap_data.values,
