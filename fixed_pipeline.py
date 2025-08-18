@@ -722,8 +722,14 @@ class FixedSF311Pipeline:
             mase_score = best_model_result.get("mase_score", float('inf'))
             weekly_repeat_score = best_model_result.get("weekly_repeat_score", float('inf'))
             
+            # Log model selection for debugging
+            print(f"Model selection for neighborhood: {neighborhood}")
+            print(f"  Selected: {best_model_result['model_type']}")
+            print(f"  MASE: {mase_score:.3f}, Weekly_repeat: {weekly_repeat_score:.3f}")
+            
             if mase_score > 2.0 and weekly_repeat_score < 0.01:
                 # Model is both inaccurate and repetitive - skip this neighborhood
+                print(f"  Skipping {neighborhood} due to poor model quality")
                 continue
             
             # Generate forecast
@@ -735,8 +741,10 @@ class FixedSF311Pipeline:
         if all_forecasts:
             final_forecast = pd.concat(all_forecasts, ignore_index=True)
             final_forecast = validate_predictions(final_forecast)
+            print(f"Generated forecasts for {len(final_forecast['neighborhood'].unique())} neighborhoods")
             return final_forecast
         else:
+            print("No forecasts generated, falling back to baseline predictions")
             return self._generate_baseline_predictions(prediction_days)
     
     def _ensure_continuous_days(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -970,6 +978,7 @@ class FixedSF311Pipeline:
     
     def _generate_baseline_predictions(self, prediction_days: int) -> pd.DataFrame:
         """Generate baseline predictions when no historical data is available"""
+        print("WARNING: Using baseline predictions - this should not normally happen")
         
         neighborhoods = [
             "Mission", "Castro", "SOMA", "Chinatown", "North Beach", 
