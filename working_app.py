@@ -27,6 +27,11 @@ if 'last_working_refresh' not in st.session_state:
 def get_working_pipeline():
     return FixedSF311Pipeline()
 
+def clear_cache_and_reload():
+    """Clear all cached resources and reload"""
+    st.cache_resource.clear()
+    st.rerun()
+
 @st.cache_resource
 def get_data_processor():
     return DataProcessor()
@@ -316,6 +321,9 @@ def main():
         
         if st.button("Show Historical Validation", help="Compare recent predictions with actual data"):
             show_historical_validation()
+        
+        if st.button("🔄 Clear Cache & Reload", help="Force reload with updated pipeline configuration"):
+            clear_cache_and_reload()
         
         if st.session_state.last_working_refresh:
             st.caption(f"Last updated: {st.session_state.last_working_refresh.strftime('%Y-%m-%d %H:%M:%S')}")
