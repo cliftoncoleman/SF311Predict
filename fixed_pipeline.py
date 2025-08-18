@@ -90,7 +90,7 @@ class FixedSF311Pipeline:
         self.max_forecast_horizon = 90
         
         self.neighbor_pref_order = [
-            "neighborhoods_analysis_boundaries",
+            "neighborhoods_analysis",
             "neighborhoods_sffind_boundaries", 
             "neighborhood_district",
         ]
