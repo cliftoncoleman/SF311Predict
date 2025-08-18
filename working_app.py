@@ -165,12 +165,15 @@ def create_demo_data():
             if prediction_date.weekday() in [5, 6]:
                 predicted_requests *= 0.7
             
+            # Round to whole numbers
+            predicted_requests = round(predicted_requests)
+            
             predictions.append({
                 'date': prediction_date,
                 'neighborhood': neighborhood,
-                'predicted_requests': predicted_requests,
-                'confidence_lower': predicted_requests * 0.8,
-                'confidence_upper': predicted_requests * 1.2
+                'predicted_requests': int(predicted_requests),
+                'confidence_lower': int(round(predicted_requests * 0.8)),
+                'confidence_upper': int(round(predicted_requests * 1.2))
             })
     
     return pd.DataFrame(predictions)

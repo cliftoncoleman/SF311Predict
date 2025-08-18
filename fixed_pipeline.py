@@ -66,6 +66,8 @@ def validate_predictions(df: pd.DataFrame) -> pd.DataFrame:
     numeric_cols = ['predicted_requests', 'confidence_lower', 'confidence_upper']
     for col in numeric_cols:
         df[col] = np.maximum(df[col].astype(float), 0)
+        # Round to nearest whole number
+        df[col] = np.round(df[col]).astype(int)
     
     df['confidence_lower'] = np.minimum(df['confidence_lower'], df['predicted_requests'])
     df['confidence_upper'] = np.maximum(df['confidence_upper'], df['predicted_requests'])
@@ -921,9 +923,9 @@ class FixedSF311Pipeline:
         forecast_df = pd.DataFrame({
             'date': forecast_dates,
             'neighborhood': neighborhood,
-            'predicted_requests': predictions.astype(float),
-            'confidence_lower': confidence_lower.astype(float),
-            'confidence_upper': confidence_upper.astype(float)
+            'predicted_requests': np.round(predictions).astype(int),
+            'confidence_lower': np.round(confidence_lower).astype(int),
+            'confidence_upper': np.round(confidence_upper).astype(int)
         })
         
         return forecast_df
@@ -957,9 +959,9 @@ class FixedSF311Pipeline:
         return pd.DataFrame({
             'date': forecast_dates,
             'neighborhood': neighborhood,
-            'predicted_requests': predictions,
-            'confidence_lower': predictions * 0.8,
-            'confidence_upper': predictions * 1.2
+            'predicted_requests': np.round(predictions).astype(int),
+            'confidence_lower': np.round(predictions * 0.8).astype(int),
+            'confidence_upper': np.round(predictions * 1.2).astype(int)
         })
     
     def _generate_baseline_predictions(self, prediction_days: int) -> pd.DataFrame:
@@ -991,9 +993,9 @@ class FixedSF311Pipeline:
                 predictions.append({
                     'date': prediction_date,
                     'neighborhood': neighborhood,
-                    'predicted_requests': float(base_requests),
-                    'confidence_lower': float(base_requests * 0.8),
-                    'confidence_upper': float(base_requests * 1.2)
+                    'predicted_requests': int(round(base_requests)),
+                    'confidence_lower': int(round(base_requests * 0.8)),
+                    'confidence_upper': int(round(base_requests * 1.2))
                 })
         
         return pd.DataFrame(predictions)
