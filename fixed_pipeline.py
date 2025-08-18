@@ -693,6 +693,11 @@ class FixedSF311Pipeline:
             prediction_days = (end_of_year - today).days
             print(f"Forecasting to end of year: {prediction_days} days until {end_of_year}")
         
+        # Show data range info
+        if not historical_data.empty:
+            total_days = (historical_data['date'].max() - historical_data['date'].min()).days
+            print(f"Training on {total_days} days of historical data ({total_days/365:.1f} years)")
+        
         prediction_days = min(prediction_days, self.max_forecast_horizon)
         
         all_forecasts = []
@@ -1087,11 +1092,20 @@ class FixedSF311Pipeline:
             return pd.DataFrame()
 
     def run_full_fixed_pipeline(self, 
-                               days_back: int = 1095,
+                               days_back: int = 1825,
                                prediction_days: int = 30) -> pd.DataFrame:
         """Run the complete fixed pipeline"""
         
+        print(f"Fetching {days_back} days of historical data ({days_back/365:.1f} years)")
         historical_data = self.fetch_historical_data(start_days=days_back)
+        
+        if not historical_data.empty:
+            date_range = f"{historical_data['date'].min()} to {historical_data['date'].max()}"
+            total_records = len(historical_data)
+            print(f"Loaded {total_records} records from {date_range}")
+        else:
+            print("WARNING: No historical data loaded!")
+        
         predictions = self.generate_fixed_predictions(historical_data, prediction_days)
         
         return predictions
