@@ -134,6 +134,33 @@ def load_working_data():
         st.session_state.working_neighborhoods = sorted(demo_data['neighborhood'].unique())
         st.session_state.last_working_refresh = datetime.now()
 
+def show_historical_validation():
+    """Show historical vs predicted validation"""
+    try:
+        with st.spinner("Loading historical validation data..."):
+            historical_data = pipeline.get_historical_vs_predicted(days_back=30)
+            
+            if not historical_data.empty:
+                st.session_state.historical_data = historical_data
+                st.success(f"Loaded {len(historical_data)} historical validation records from last 30 days")
+                
+                # Show basic stats
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    avg_actual = historical_data['actual_requests'].mean()
+                    st.metric("Avg Daily Actual", f"{avg_actual:.1f}")
+                with col2:
+                    total_actual = historical_data['actual_requests'].sum()
+                    st.metric("Total Actual (30d)", f"{total_actual:,.0f}")
+                with col3:
+                    neighborhoods = historical_data['neighborhood'].nunique()
+                    st.metric("Neighborhoods", neighborhoods)
+            else:
+                st.error("No historical validation data available")
+                
+    except Exception as e:
+        st.error(f"Error loading historical data: {str(e)}")
+
 def create_demo_data():
     """Create demo data for testing"""
     neighborhoods = [
@@ -212,6 +239,9 @@ def main():
         
         if st.button("Load Enhanced Data", type="primary"):
             load_working_data()
+        
+        if st.button("Show Historical Validation", help="Compare recent predictions with actual data"):
+            show_historical_validation()
         
         if st.session_state.last_working_refresh:
             st.caption(f"Last updated: {st.session_state.last_working_refresh.strftime('%Y-%m-%d %H:%M:%S')}")
