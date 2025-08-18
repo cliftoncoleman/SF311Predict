@@ -117,7 +117,7 @@ def load_working_data():
                 st.session_state.working_data = predictions
                 # Use specific default neighborhoods in priority order
                 priority_neighborhoods = [
-                    "South of Market", "Tenderloin", "Mission Bay", 
+                    "South of Market", "Tenderloin", "Hayes Valley", 
                     "Mission", "Bayview Hunters Point"
                 ]
                 
@@ -279,21 +279,43 @@ def main():
             with col1:
                 if st.button("Select All", help="Select all neighborhoods"):
                     st.session_state.selected_all_neighborhoods = True
+                    st.session_state.selected_priority_neighborhoods = False
             with col2:
                 if st.button("Select Priority", help="Select priority SF areas"):
                     st.session_state.selected_all_neighborhoods = False
+                    st.session_state.selected_priority_neighborhoods = True
             
-            # Determine default selection
+            # Determine default selection based on button state
             if st.session_state.get('selected_all_neighborhoods', False):
                 default_selection = st.session_state.working_neighborhoods
+            elif st.session_state.get('selected_priority_neighborhoods', False):
+                # Use exact priority neighborhoods
+                priority_neighborhoods = [
+                    "South of Market", "Tenderloin", "Hayes Valley", 
+                    "Mission", "Bayview Hunters Point"
+                ]
+                # Filter to only include neighborhoods that exist in the data
+                available_neighborhoods = st.session_state.working_neighborhoods
+                default_selection = [n for n in priority_neighborhoods if n in available_neighborhoods]
+                # If none of the priority neighborhoods exist, fall back to first 5
+                if not default_selection:
+                    default_selection = available_neighborhoods[:5]
             else:
-                default_selection = st.session_state.working_neighborhoods[:5]
+                # Default startup selection (priority neighborhoods)
+                priority_neighborhoods = [
+                    "South of Market", "Tenderloin", "Hayes Valley", 
+                    "Mission", "Bayview Hunters Point"
+                ]
+                available_neighborhoods = st.session_state.working_neighborhoods
+                default_selection = [n for n in priority_neighborhoods if n in available_neighborhoods]
+                if not default_selection:
+                    default_selection = available_neighborhoods[:5]
             
             selected_neighborhoods = st.multiselect(
                 "Select neighborhoods:",
                 options=st.session_state.working_neighborhoods,
                 default=default_selection,
-                help="Default selection includes key SF areas: SOMA, Tenderloin, Mission Bay, Mission, Bayview"
+                help="Priority selection: South of Market, Tenderloin, Hayes Valley, Mission, Bayview Hunters Point"
             )
             
 
