@@ -756,13 +756,17 @@ class FixedSF311Pipeline:
                                      prediction_days: int) -> pd.DataFrame:
         """Generate forecast from trained model"""
         
-        start_date = nbhd_data['date'].max()
-        if isinstance(start_date, str):
-            start_date = pd.to_datetime(start_date).date()
-        elif hasattr(start_date, 'date'):
-            start_date = start_date.date()
+        # Start predictions from today, not from last historical data date
+        today = dt.date.today()
+        last_data_date = nbhd_data['date'].max()
+        if isinstance(last_data_date, str):
+            last_data_date = pd.to_datetime(last_data_date).date()
+        elif hasattr(last_data_date, 'date'):
+            last_data_date = last_data_date.date()
         
-        forecast_dates = [start_date + timedelta(days=i+1) for i in range(prediction_days)]
+        # Start from today or next day after last data, whichever is later
+        start_date = max(today, last_data_date + timedelta(days=1))
+        forecast_dates = [start_date + timedelta(days=i) for i in range(prediction_days)]
         
         if model_result["model_type"] == "seasonal_naive":
             hist_values = nbhd_data['cases'].values.astype(float)
