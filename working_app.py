@@ -28,12 +28,21 @@ def get_working_pipeline():
 
 def clear_cache_and_reload():
     """Clear all cached resources and reload"""
+    st.cache_data.clear()
     st.cache_resource.clear()
+    # Clear session state to force fresh data loading
+    if 'working_data' in st.session_state:
+        del st.session_state.working_data
+    if 'working_neighborhoods' in st.session_state:
+        del st.session_state.working_neighborhoods
+    if 'last_working_refresh' in st.session_state:
+        del st.session_state.last_working_refresh
     st.rerun()
 
 def get_data_processor():
     return DataProcessor()
 
+# Create fresh instances each time to avoid caching issues
 pipeline = get_working_pipeline()
 processor = get_data_processor()
 
@@ -99,8 +108,16 @@ def load_working_data():
     """Load data using the working pipeline"""
     try:
         with st.spinner("Loading SF311 data with 5-year training pipeline..."):
-            # Create fresh pipeline instance to bypass any caching issues
+            # Clear all Streamlit caches first
+            st.cache_data.clear()
+            st.cache_resource.clear()
+            
+            # Create completely fresh pipeline instance to bypass any caching issues
             fresh_pipeline = FixedSF311Pipeline()
+            
+            # Explicitly verify the days_back parameter
+            st.info("Loading 1825 days (5 years) of historical data for training...")
+            
             # Use 5 years of training data for robust modeling
             predictions = fresh_pipeline.run_full_fixed_pipeline(
                 days_back=1825,  # 5 years for robust training  
@@ -324,6 +341,16 @@ def main():
         
         if st.button("🔄 Clear Cache & Reload", help="Force reload with updated pipeline configuration"):
             clear_cache_and_reload()
+        
+        if st.button("🔄 Force 5-Year Data Reload", help="Force reload with 5 years of data, clearing all caches"):
+            st.cache_data.clear()
+            st.cache_resource.clear()
+            # Clear session state
+            for key in ['working_data', 'working_neighborhoods', 'last_working_refresh']:
+                if key in st.session_state:
+                    del st.session_state[key]
+            st.info("Cache cleared. Loading fresh 5-year dataset...")
+            load_working_data()
         
         if st.session_state.last_working_refresh:
             st.caption(f"Last updated: {st.session_state.last_working_refresh.strftime('%Y-%m-%d %H:%M:%S')}")

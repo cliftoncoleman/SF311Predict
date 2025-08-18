@@ -194,8 +194,10 @@ class FixedSF311Pipeline:
         
         # Debug logging to confirm 5-year data loading
         years = start_days / 365.25
+        print(f"*** FETCH_HISTORICAL_DATA CALLED ***")
         print(f"Fetching {start_days} days of historical data ({years:.1f} years)")
         print(f"Date range: {start_date} to {today}")
+        print(f"*** This should be 1825 days (5 years) for training ***")
         
         try:
             fields = self.get_field_names()
