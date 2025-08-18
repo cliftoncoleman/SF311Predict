@@ -27,7 +27,15 @@ Preferred communication style: Simple, everyday language.
 - ✓ Fixed column name issues (analysis_neighborhood vs neighborhoods_analysis)
 - ✓ System now shows 42 unique analysis neighborhoods instead of fragmented micro-areas
 - ✓ User confirmed proper neighborhood groupings are now working
-- → Next: UI and functionality improvements as requested by user
+- ✓ **MAJOR MODEL ENHANCEMENTS**: Implemented comprehensive forecast improvements
+- ✓ Added expanded momentum features (wk_delta, wk_ratio) to break weekly-flat forecasts  
+- ✓ Enhanced lag features (1-6, 14, 21, 28 days) and rolling statistics (3, 7, 14, 28 windows)
+- ✓ Implemented week-of-year seasonality with Fourier harmonics for broader patterns
+- ✓ Added weekly-flat detection with intelligent model selection (MASE + repetition score)
+- ✓ Enhanced confidence intervals using quantile regression models and conformal prediction
+- ✓ Added guardrails for small/volatile neighborhoods with quality thresholds
+- ✓ Implemented historical data capping (max_hist + 3*std_hist) to prevent unrealistic spikes
+- → Next: Testing and validation of enhanced forecasting improvements
 
 ## System Architecture
 

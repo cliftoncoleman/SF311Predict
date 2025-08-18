@@ -1,0 +1,104 @@
+Make forecasts less “weekly-flat”
+A) Add short-horizon momentum features (break the fixed point)
+
+Inside build_features, expand lags/rolls and add recent change/rate:
+
+# Lags: add 2–6, 21
+for L in [1,2,3,4,5,6,7,14,21,28]:
+    df[f"lag_{L}"] = df[y_col].shift(L)
+
+# Rolling stats (short + medium)
+for w in [3,7,14,28]:
+    df[f"roll_mean_{w}"] = df[y_col].shift(1).rolling(w, min_periods=max(1, w//2)).mean()
+    df[f"roll_std_{w}"]  = df[y_col].shift(1).rolling(w, min_periods=max(1, w//2)).std()
+
+# Recent momentum features
+df["wk_delta"] = df[y_col].shift(1) - df[y_col].shift(8)         # last day vs same weekday last week
+df["wk_ratio"] = (df[y_col].shift(1)+1) / (df[y_col].shift(8)+1)
+
+
+This gives the model a way to continue rising/falling rather than freezing at weekday means.
+
+B) Add week-of-year seasonality (beyond DOW)
+
+You already have yearly Fourier; add weekly-of-year to capture broader seasonal patterns:
+
+def add_woy_fourier(df, date_col, K=2):
+    df = df.copy()
+    woy = df[date_col].dt.isocalendar().week.astype(int).values
+    for k in range(1, K+1):
+        df[f"woy_sin_{k}"] = np.sin(2*np.pi*k*woy/52.0)
+        df[f"woy_cos_{k}"] = np.cos(2*np.pi*k*woy/52.0)
+    return df
+
+# in build_features after add_dow_cyclic(...):
+df = add_woy_fourier(df, date_col, K=2)
+
+Smarter model selection (avoid a weekly fixed-point winner)
+
+After you compute validation predictions for each candidate, measure repetition and de-prioritize models that are just weekly repeats unless they’re clearly best:
+
+def weekly_repeat_score(yhat):
+    if len(yhat) <= 7: return np.inf
+    d = np.abs(yhat[7:] - yhat[:-7])
+    return float(np.median(d) / (1 + np.median(yhat)))
+
+# After computing candidates_with_baseline:
+for m in candidates:
+    m.extra["weekly_repeat_score"] = weekly_repeat_score(m.yhat_val)
+
+# Select by a 2-key sort: MAPE then repetition (lower is better)
+best = min(
+    candidates_with_baseline,
+    key=lambda m: (
+        np.inf if np.isnan(m.val_scores.get("MAPE", np.inf)) else m.val_scores["MAPE"],
+        m.extra.get("weekly_repeat_score", 1.0)
+    )
+)
+
+
+This keeps you from “locking in” a weekly-flat model when another model has similar MAPE but better dynamics.
+
+Tighter, more honest intervals
+C) Conformal residual quantiles (distribution-free)
+
+Replace ±1.96*sigma with empirical residual quantiles on the validation set (optionally per-weekday). Example for the AI model:
+
+# After you have valy and yhat_val for the chosen model:
+resid = valy - yhat_val
+q_lo, q_hi = np.quantile(resid, [0.05, 0.95])  # 90% PI
+
+# When forecasting future yhat:
+lo = np.clip(yhat + q_lo, 0, None)
+hi = np.clip(yhat + q_hi, 0, None)
+
+
+Optional: compute q_lo/q_hi separately by day-of-week to reflect different noise on weekends vs weekdays.
+
+D) Quantile GBM for intervals (model-based)
+
+If you prefer model-based PIs without statsmodels, train two GradientBoostingRegressor models for q=0.1 and q=0.9 alongside your point model:
+
+from sklearn.ensemble import GradientBoostingRegressor
+
+def fit_gbr_quantile(trainX, trainy, alpha):
+    return GradientBoostingRegressor(loss="quantile", alpha=alpha, n_estimators=400, learning_rate=0.05, max_depth=3, random_state=42).fit(trainX, trainy)
+
+# Fit on full features:
+mid = HistGradientBoostingRegressor(loss="poisson", max_iter=300, learning_rate=0.05, random_state=42).fit(fe_full[feat_cols], fe_full["cases"])
+lo_model = fit_gbr_quantile(fe_full[feat_cols], fe_full["cases"], 0.10)
+hi_model = fit_gbr_quantile(fe_full[feat_cols], fe_full["cases"], 0.90)
+
+# At forecast time (use the same X_next you already build):
+yhat = np.clip(mid.predict(X_next)[0], 0, None)
+ylo  = np.clip(lo_model.predict(X_next)[0], 0, None)
+yhi  = np.clip(hi_model.predict(X_next)[0], 0, None)
+
+
+This yields asymmetric PIs that shrink when the model is confident and widen when not.
+
+Guardrails for small/volatile neighborhoods
+
+If a neighborhood’s training rows < MIN_TRAIN_DAYS or its validation MAPE is terrible and weekly_repeat_score is tiny, aggregate it to the parent (your Analysis Boundaries) or hold out entirely (emit “Unknown/Insufficient data”).
+
+Cap insane highs: yhat_hi = min(yhat_hi, max_hist_value + 3*std_hist).

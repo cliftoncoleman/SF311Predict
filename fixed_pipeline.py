@@ -244,8 +244,15 @@ class FixedSF311Pipeline:
             st.error(f"Error fetching SF311 data: {str(e)}")
             return pd.DataFrame()
     
+    def weekly_repeat_score(self, yhat):
+        """Measure how much a prediction is just weekly repetition"""
+        if len(yhat) <= 7: 
+            return np.inf
+        d = np.abs(yhat[7:] - yhat[:-7])
+        return float(np.median(d) / (1 + np.median(yhat)))
+
     def backtest_and_select_model(self, df_nbhd: pd.DataFrame, y_col: str = 'cases', val_days: int = 30) -> Dict[str, Any]:
-        """Improved model selection with fixed validation indexing"""
+        """Improved model selection with weekly-flat detection"""
         if len(df_nbhd) < val_days + 60:
             return {"model_type": "seasonal_naive", "model": None, "score": float('inf')}
         
@@ -263,30 +270,43 @@ class FixedSF311Pipeline:
         eps = 1e-6
         mape_baseline = np.mean(np.abs((y_val - base_val_pred) / np.maximum(y_val, eps))) * 100
         mase_baseline = mase(y_val, base_val_pred, season=7)
+        weekly_repeat_baseline = self.weekly_repeat_score(base_val_pred)
         
-        best_model = {
+        candidates = [{
             "model_type": "seasonal_naive",
             "model": None,
             "mape_score": mape_baseline,
             "mase_score": mase_baseline,
+            "weekly_repeat_score": weekly_repeat_baseline,
             "predictions": base_val_pred
-        }
+        }]
         
         # Try ML model if enough data
         if len(train_df) >= 60:
             try:
                 ml_result = self._train_ml_model(train_df, val_df, y_col)
-                if ml_result and ml_result["mase_score"] < best_model["mase_score"]:
-                    best_model = ml_result
+                if ml_result:
+                    ml_result["weekly_repeat_score"] = self.weekly_repeat_score(ml_result["predictions"])
+                    candidates.append(ml_result)
             except Exception:
                 pass
+        
+        # Select by 2-key sort: MASE then weekly repetition (lower is better)
+        best_model = min(
+            candidates,
+            key=lambda m: (
+                np.inf if np.isnan(m.get("mase_score", np.inf)) else m.get("mase_score", np.inf),
+                m.get("weekly_repeat_score", 1.0)
+            )
+        )
         
         return best_model
     
     def _train_ml_model(self, train_df: pd.DataFrame, val_df: pd.DataFrame, y_col: str) -> Optional[Dict[str, Any]]:
-        """Train ML model with fixed parameters"""
+        """Train ML model with enhanced confidence intervals"""
         try:
-            from sklearn.ensemble import HistGradientBoostingRegressor
+            from sklearn.ensemble import HistGradientBoostingRegressor, GradientBoostingRegressor
+            import numpy as np
             
             train_features = self._build_ml_features(train_df.copy())
             
@@ -297,15 +317,31 @@ class FixedSF311Pipeline:
             X_train = train_features[feature_cols].fillna(0)
             y_train = train_features[y_col].fillna(0).astype(float)
             
-            # Fixed parameters as suggested
+            # Main point model
             model = HistGradientBoostingRegressor(
                 loss="poisson",
                 max_iter=300,
                 learning_rate=0.05,
                 random_state=42
             )
-            
             model.fit(X_train, y_train)
+            
+            # Train quantile models for better confidence intervals
+            lo_model = GradientBoostingRegressor(
+                loss="quantile", alpha=0.1, n_estimators=400, 
+                learning_rate=0.05, max_depth=3, random_state=42
+            )
+            hi_model = GradientBoostingRegressor(
+                loss="quantile", alpha=0.9, n_estimators=400,
+                learning_rate=0.05, max_depth=3, random_state=42  
+            )
+            
+            try:
+                lo_model.fit(X_train, y_train)
+                hi_model.fit(X_train, y_train)
+                quantile_models_available = True
+            except:
+                quantile_models_available = False
             
             # Generate validation predictions
             val_features = self._build_ml_features(pd.concat([train_df, val_df]))
@@ -317,46 +353,81 @@ class FixedSF311Pipeline:
             
             y_val = val_df[y_col].values.astype(float)
             
+            # Calculate conformal prediction residuals for fallback
+            residuals = y_val - val_pred
+            q_lo, q_hi = np.quantile(residuals, [0.05, 0.95])  # 90% prediction interval
+            
             eps = 1e-6
             mape_score = np.mean(np.abs((y_val - val_pred) / np.maximum(y_val, eps))) * 100
             mase_score = mase(y_val, val_pred, season=7)
             
-            return {
+            result = {
                 "model_type": "ml",
                 "model": model,
                 "feature_cols": feature_cols,
                 "mape_score": mape_score,
                 "mase_score": mase_score,
-                "predictions": val_pred
+                "predictions": val_pred,
+                "conformal_q_lo": q_lo,
+                "conformal_q_hi": q_hi
             }
+            
+            if quantile_models_available:
+                result["lo_model"] = lo_model
+                result["hi_model"] = hi_model
+                result["has_quantile_models"] = True
+            else:
+                result["has_quantile_models"] = False
+            
+            return result
             
         except Exception:
             return None
     
     def _build_ml_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Build ML features"""
+        """Build enhanced ML features to reduce weekly-flat forecasts"""
+        import numpy as np
+        
         df = df.copy()
         df['date'] = pd.to_datetime(df['date'])
         df = df.sort_values('date').reset_index(drop=True)
+        y_col = 'cases'
         
-        # Lag features
-        for lag in [1, 7, 14, 28]:
-            df[f'lag_{lag}'] = df['cases'].shift(lag)
+        # Expanded lag features (break fixed point)
+        for L in [1, 2, 3, 4, 5, 6, 7, 14, 21, 28]:
+            df[f"lag_{L}"] = df[y_col].shift(L)
         
-        # Rolling statistics
-        for window in [7, 14, 28]:
-            df[f'roll_mean_{window}'] = df['cases'].shift(1).rolling(
-                window, min_periods=max(1, window//2)
-            ).mean()
-            df[f'roll_std_{window}'] = df['cases'].shift(1).rolling(
-                window, min_periods=max(1, window//2)
-            ).std()
+        # Enhanced rolling stats (short + medium)
+        for w in [3, 7, 14, 28]:
+            df[f"roll_mean_{w}"] = df[y_col].shift(1).rolling(w, min_periods=max(1, w//2)).mean()
+            df[f"roll_std_{w}"] = df[y_col].shift(1).rolling(w, min_periods=max(1, w//2)).std()
         
-        # Time features
+        # Recent momentum features (key improvement)
+        df["wk_delta"] = df[y_col].shift(1) - df[y_col].shift(8)         # last day vs same weekday last week
+        df["wk_ratio"] = (df[y_col].shift(1) + 1) / (df[y_col].shift(8) + 1)  # ratio vs last week
+        
+        # Day-of-week cyclic features
         df['dow'] = df['date'].dt.dayofweek
+        df['dow_sin'] = np.sin(2 * np.pi * df['dow'] / 7)
+        df['dow_cos'] = np.cos(2 * np.pi * df['dow'] / 7)
+        
+        # Week-of-year seasonality (broader patterns)
+        woy = df['date'].dt.isocalendar().week.astype(int).values
+        for k in range(1, 3):  # K=2 harmonics
+            df[f"woy_sin_{k}"] = np.sin(2 * np.pi * k * woy / 52.0)
+            df[f"woy_cos_{k}"] = np.cos(2 * np.pi * k * woy / 52.0)
+        
+        # Yearly Fourier features
+        doy = df['date'].dt.dayofyear
+        for k in range(1, 4):  # 3 harmonics
+            df[f"doy_sin_{k}"] = np.sin(2 * np.pi * k * doy / 365.25)
+            df[f"doy_cos_{k}"] = np.cos(2 * np.pi * k * doy / 365.25)
+        
+        # Month and day features
         df['month'] = df['date'].dt.month
         df['day'] = df['date'].dt.day
         
+        # Drop rows with critical missing features
         df = df.dropna(subset=['lag_1', 'lag_7'])
         return df
     
@@ -377,9 +448,10 @@ class FixedSF311Pipeline:
             nbhd_data = historical_data[historical_data['neighborhood'] == neighborhood].copy()
             nbhd_data = nbhd_data.sort_values('date').reset_index(drop=True)
             
-            if len(nbhd_data) < 30:
-                forecast = self._simple_neighborhood_forecast(neighborhood, nbhd_data, prediction_days)
-                all_forecasts.append(forecast)
+            # Guardrails for small/volatile neighborhoods
+            MIN_TRAIN_DAYS = 30
+            if len(nbhd_data) < MIN_TRAIN_DAYS:
+                # Skip neighborhoods with insufficient data
                 continue
             
             nbhd_data = self._ensure_continuous_days(nbhd_data)
@@ -389,8 +461,16 @@ class FixedSF311Pipeline:
                 all_forecasts.append(forecast)
                 continue
             
-            # Select best model
+            # Select best model with enhanced selection
             best_model_result = self.backtest_and_select_model(nbhd_data)
+            
+            # Additional guardrail: skip if model has terrible accuracy and is weekly-flat
+            mase_score = best_model_result.get("mase_score", float('inf'))
+            weekly_repeat_score = best_model_result.get("weekly_repeat_score", float('inf'))
+            
+            if mase_score > 2.0 and weekly_repeat_score < 0.01:
+                # Model is both inaccurate and repetitive - skip this neighborhood
+                continue
             
             # Generate forecast
             forecast = self._generate_forecast_from_model(
@@ -443,26 +523,50 @@ class FixedSF311Pipeline:
             model = model_result["model"]
             feature_cols = model_result["feature_cols"]
             
+            # Enhanced confidence interval models
+            has_quantile_models = model_result.get("has_quantile_models", False)
+            lo_model = model_result.get("lo_model")
+            hi_model = model_result.get("hi_model")
+            
+            # Conformal prediction residuals as fallback
+            q_lo = model_result.get("conformal_q_lo", 0)
+            q_hi = model_result.get("conformal_q_hi", 0)
+            
             predictions = []
             confidence_lower = []
             confidence_upper = []
             
             extended_data = nbhd_data.copy()
             
+            # Cap insane highs - add guardrail for historical context
+            hist_values = nbhd_data['cases'].values
+            max_hist = np.max(hist_values) if len(hist_values) > 0 else 100
+            std_hist = np.std(hist_values) if len(hist_values) > 1 else max_hist * 0.2
+            hist_cap = max_hist + 3 * std_hist
+            
             for i in range(prediction_days):
                 temp_data = self._build_ml_features(extended_data.copy())
                 if temp_data.empty:
                     pred = extended_data['cases'].iloc[-1] if len(extended_data) > 0 else 1
+                    lo_pred = max(pred + q_lo, 0)
+                    hi_pred = min(pred + q_hi, hist_cap)
                 else:
                     X_pred = temp_data[feature_cols].iloc[-1:].fillna(0)
                     pred = model.predict(X_pred)[0]
+                    
+                    if has_quantile_models and lo_model and hi_model:
+                        # Use quantile regression models
+                        lo_pred = max(lo_model.predict(X_pred)[0], 0)
+                        hi_pred = min(hi_model.predict(X_pred)[0], hist_cap)
+                    else:
+                        # Use conformal prediction intervals
+                        lo_pred = max(pred + q_lo, 0)
+                        hi_pred = min(pred + q_hi, hist_cap)
                 
                 pred = max(float(pred), 0)
                 predictions.append(pred)
-                
-                pred_std = pred * 0.15
-                confidence_lower.append(max(pred - 1.96 * pred_std, 0))
-                confidence_upper.append(pred + 1.96 * pred_std)
+                confidence_lower.append(float(lo_pred))
+                confidence_upper.append(float(hi_pred))
                 
                 next_date = forecast_dates[i]
                 new_row = pd.DataFrame({
