@@ -841,10 +841,13 @@ class FixedSF311Pipeline:
             hist_values = nbhd_data['cases'].values.astype(float)
             predictions = seasonal_naive_forecast(hist_values, prediction_days, season=7)
             
-            mean_pred = np.mean(predictions)
-            std_pred = np.std(predictions) if len(predictions) > 1 else mean_pred * 0.2
-            confidence_lower = np.maximum(predictions - 1.96 * std_pred, 0)
-            confidence_upper = predictions + 1.96 * std_pred
+            # Use more reasonable confidence intervals based on recent volatility
+            recent_vals = nbhd_data['cases'].tail(28).values  # Last 4 weeks
+            recent_std = np.std(recent_vals) if len(recent_vals) > 1 else np.mean(recent_vals) * 0.15
+            # Use 80% confidence interval (1.28 instead of 1.96) and cap the width
+            interval_width = min(1.28 * recent_std, np.mean(predictions) * 0.3)
+            confidence_lower = np.maximum(predictions - interval_width, 0)
+            confidence_upper = predictions + interval_width
             
         elif model_result["model_type"] == "trend":
             # Enhanced trend model predictions
@@ -896,11 +899,13 @@ class FixedSF311Pipeline:
             
             predictions = np.array(predictions)
             
-            # Adaptive confidence intervals based on recent volatility
-            recent_vals = nbhd_data['cases'].tail(14).values
-            recent_std = np.std(recent_vals) if len(recent_vals) > 1 else np.mean(recent_vals) * 0.2
-            confidence_lower = np.maximum(predictions - 1.2 * recent_std, 0)
-            confidence_upper = predictions + 1.2 * recent_std
+            # Tighter confidence intervals based on recent volatility
+            recent_vals = nbhd_data['cases'].tail(21).values  # Last 3 weeks
+            recent_std = np.std(recent_vals) if len(recent_vals) > 1 else np.mean(recent_vals) * 0.15
+            # Cap interval width to 25% of mean prediction for more reasonable bounds
+            interval_width = min(0.8 * recent_std, np.mean(predictions) * 0.25)
+            confidence_lower = np.maximum(predictions - interval_width, 0)
+            confidence_upper = predictions + interval_width
             
         elif model_result["model_type"] == "exponential_smoothing":
             # Exponential smoothing predictions
@@ -920,11 +925,13 @@ class FixedSF311Pipeline:
             
             predictions = np.array(predictions)
             
-            # Confidence intervals based on recent variability
-            recent_vals = nbhd_data['cases'].tail(14).values
-            recent_std = np.std(recent_vals) if len(recent_vals) > 1 else np.mean(recent_vals) * 0.3
-            confidence_lower = np.maximum(predictions - 1.0 * recent_std, 0)
-            confidence_upper = predictions + 1.0 * recent_std
+            # Tighter confidence intervals for exponential smoothing
+            recent_vals = nbhd_data['cases'].tail(21).values  # Last 3 weeks
+            recent_std = np.std(recent_vals) if len(recent_vals) > 1 else np.mean(recent_vals) * 0.15
+            # Cap interval width to 20% of mean prediction
+            interval_width = min(0.7 * recent_std, np.mean(predictions) * 0.2)
+            confidence_lower = np.maximum(predictions - interval_width, 0)
+            confidence_upper = predictions + interval_width
             
         elif model_result["model_type"] == "ml":
             model = model_result["model"]
