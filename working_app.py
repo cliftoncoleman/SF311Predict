@@ -176,7 +176,9 @@ def show_historical_validation():
     """Show historical vs predicted validation"""
     try:
         with st.spinner("Loading historical validation data..."):
-            historical_data = pipeline.get_historical_vs_predicted(days_back=30)
+            # Create fresh pipeline for validation to avoid interference
+            validation_pipeline = FixedSF311Pipeline()
+            historical_data = validation_pipeline.get_historical_vs_predicted(days_back=30)
             
             if not historical_data.empty:
                 st.session_state.historical_data = historical_data
