@@ -104,11 +104,27 @@ def load_working_data():
             
             if not predictions.empty:
                 st.session_state.working_data = predictions
-                # Sort neighborhoods by uncertainty (lowest uncertainty first)
-                # Calculate average uncertainty (confidence interval width) per neighborhood
-                predictions['uncertainty'] = predictions['confidence_upper'] - predictions['confidence_lower']
-                neighborhood_uncertainty = predictions.groupby('neighborhood')['uncertainty'].mean().sort_values(ascending=True)
-                st.session_state.working_neighborhoods = neighborhood_uncertainty.index.tolist()
+                # Use specific default neighborhoods in priority order
+                priority_neighborhoods = [
+                    "South of Market", "Tenderloin", "Mission Bay", 
+                    "Mission", "Bayview Hunters Point"
+                ]
+                
+                # Get all available neighborhoods
+                available_neighborhoods = sorted(predictions['neighborhood'].unique())
+                
+                # Put priority neighborhoods first, then others
+                ordered_neighborhoods = []
+                for neighborhood in priority_neighborhoods:
+                    if neighborhood in available_neighborhoods:
+                        ordered_neighborhoods.append(neighborhood)
+                
+                # Add remaining neighborhoods alphabetically
+                for neighborhood in available_neighborhoods:
+                    if neighborhood not in ordered_neighborhoods:
+                        ordered_neighborhoods.append(neighborhood)
+                
+                st.session_state.working_neighborhoods = ordered_neighborhoods
                 st.session_state.last_working_refresh = datetime.now()
                 
                 # Save predictions
@@ -155,11 +171,69 @@ def show_historical_validation():
                 with col3:
                     neighborhoods = historical_data['neighborhood'].nunique()
                     st.metric("Neighborhoods", neighborhoods)
+                
+                # Filter historical data by selected neighborhoods if available
+                if 'working_neighborhoods' in st.session_state:
+                    # Use the same neighborhoods as selected in main view
+                    priority_neighborhoods = [
+                        "South of Market", "Tenderloin", "Mission Bay", 
+                        "Mission", "Bayview Hunters Point"
+                    ]
+                    
+                    # Filter to priority neighborhoods that exist in historical data
+                    available_neighborhoods = historical_data['neighborhood'].unique()
+                    filtered_neighborhoods = [n for n in priority_neighborhoods if n in available_neighborhoods]
+                    
+                    if filtered_neighborhoods:
+                        filtered_historical = historical_data[
+                            historical_data['neighborhood'].isin(filtered_neighborhoods)
+                        ]
+                        
+                        if not filtered_historical.empty:
+                            st.subheader("Priority Neighborhoods Historical Data")
+                            st.write(f"Showing data for: {', '.join(filtered_neighborhoods)}")
+                            
+                            # Create simple historical chart
+                            fig = create_historical_chart(filtered_historical)
+                            st.plotly_chart(fig, use_container_width=True)
+                        
             else:
                 st.error("No historical validation data available")
                 
     except Exception as e:
         st.error(f"Error loading historical data: {str(e)}")
+
+def create_historical_chart(historical_data: pd.DataFrame) -> go.Figure:
+    """Create historical data visualization"""
+    fig = go.Figure()
+    
+    if historical_data.empty:
+        fig.add_annotation(
+            text="No historical data available",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False
+        )
+        return fig
+    
+    # Group by neighborhood and create traces
+    for neighborhood in historical_data['neighborhood'].unique():
+        nbhd_data = historical_data[historical_data['neighborhood'] == neighborhood]
+        fig.add_trace(go.Scatter(
+            x=nbhd_data['date'],
+            y=nbhd_data['actual_requests'],
+            mode='lines+markers',
+            name=neighborhood,
+            hovertemplate='%{y:.0f} actual requests<extra></extra>'
+        ))
+    
+    fig.update_layout(
+        title="Historical Actual Requests (Last 30 Days)",
+        xaxis_title="Date",
+        yaxis_title="Actual Requests",
+        height=500
+    )
+    
+    return fig
 
 def create_demo_data():
     """Create demo data for testing"""
@@ -273,8 +347,8 @@ def main():
             selected_neighborhoods = st.multiselect(
                 "Select neighborhoods:",
                 options=st.session_state.working_neighborhoods,
-                default=st.session_state.working_neighborhoods[:5],  # Top 5 by lowest uncertainty
-                help="Neighborhoods are ordered by prediction uncertainty (most reliable first)"
+                default=st.session_state.working_neighborhoods[:5],  # Priority SF neighborhoods
+                help="Default selection includes key SF areas: SOMA, Tenderloin, Mission Bay, Mission, Bayview"
             )
             
             # Chart type
