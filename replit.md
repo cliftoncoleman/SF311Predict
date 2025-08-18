@@ -14,7 +14,15 @@ Preferred communication style: Simple, everyday language.
 - ✓ Built complete Streamlit dashboard for SF311 Street & Sidewalk Cleaning predictions
 - ✓ Added demo data functionality for testing and preview
 - ✓ User confirmed dashboard design and functionality looks good
-- → Next: Connect to user's actual prediction API/data source
+- ✓ **MAJOR ENHANCEMENT**: Implemented comprehensive prediction pipeline improvements based on expert feedback
+- ✓ Added enhanced data pipeline with robust model selection (Seasonal Naive, ML, SARIMAX)
+- ✓ Implemented MASE (Mean Absolute Scaled Error) metrics for more reliable accuracy measurement
+- ✓ Optimized ML models for Replit environment with early stopping and proper parameters
+- ✓ Added comprehensive validation and error handling with schema checks
+- ✓ Enhanced feature engineering with consistent exogenous variables for SARIMAX
+- ✓ Implemented multi-format output (CSV + JSON) with metadata
+- ✓ Fixed all LSP diagnostics and improved code quality
+- → Next: User testing of enhanced features and performance validation
 
 ## System Architecture
 
@@ -30,17 +38,22 @@ Preferred communication style: Simple, everyday language.
 - **Data Processing**: Custom DataProcessor class for aggregating data at daily, weekly, and monthly levels
 - **Color Schemes**: Consistent color palette using Plotly's qualitative color sets
 
-### Data Flow Architecture
-- **API Client**: Dedicated APIClient class for external data retrieval
-- **Data Processing Pipeline**: Multi-stage processing with validation and error handling
-- **Caching Strategy**: Session state caching to minimize API calls and improve performance
-- **Real-time Updates**: Manual refresh capability with timestamp tracking
+### Enhanced Data Flow Architecture
+- **Enhanced SF311 Pipeline**: Production-ready pipeline with sophisticated model selection
+- **Automatic Model Selection**: Backtesting-based selection between Seasonal Naive, ML, and SARIMAX models
+- **Robust Validation**: Schema validation ensuring yhat_lo ≤ yhat ≤ yhat_hi and non-negativity
+- **Multi-stage Processing**: Historical data fetching → feature engineering → model training → forecasting
+- **Performance Optimized**: ML models configured for Replit environment with early stopping
+- **Multi-format Output**: CSV and JSON exports with generation metadata and timestamps
 
-### Component Structure
-- **Modular Design**: Separate modules for charts, filters, and utilities
-- **Filter Component**: Reusable date range and neighborhood selection filters
-- **Chart Generator**: Centralized chart creation with consistent styling and error handling
-- **Error Handling**: Comprehensive error handling across all components with user-friendly messages
+### Enhanced Component Structure
+- **Enhanced Pipeline Module**: `improved_data_pipeline.py` with production-ready forecasting
+- **MASE Metrics**: More reliable accuracy measurement than MAPE for sparse neighborhood data  
+- **Seasonal Naive Forecasting**: Proper implementation preventing mis-ordered validation indexing
+- **Optimized ML Models**: HistGradientBoostingRegressor with max_iter=300, early stopping, random_state=42
+- **SARIMAX Integration**: Consistent exogenous variable handling with assertion checks
+- **Enhanced Chart Components**: Fixed all LSP diagnostics and improved visualizations
+- **Comprehensive Validation**: Data quality checks and schema validation throughout pipeline
 
 ## External Dependencies
 
