@@ -46,18 +46,35 @@ class DataProcessor:
             return data
     
     def _aggregate_weekly(self, data: pd.DataFrame) -> pd.DataFrame:
-        """Aggregate data by week"""
+        """Aggregate data by week with proper confidence interval calculation"""
         try:
             data_copy = data.copy()
             data_copy['week'] = data_copy['date'].dt.to_period('W').dt.start_time
             
-            aggregated = data_copy.groupby(['week', 'neighborhood']).agg({
-                'predicted_requests': 'sum',
-                'confidence_lower': 'sum',
-                'confidence_upper': 'sum'
-            }).reset_index()
+            # Group and aggregate predictions
+            grouped = data_copy.groupby(['week', 'neighborhood'])
             
-            aggregated.rename(columns={'week': 'date'}, inplace=True)
+            # Sum the predicted requests
+            predicted_sums = grouped['predicted_requests'].sum()
+            
+            # For confidence intervals, use statistical combination
+            # Assuming independence, variance adds when summing random variables
+            # CI width ≈ (upper - lower), so we use root sum of squares for combining uncertainties
+            lower_diffs = grouped.apply(lambda x: ((x['predicted_requests'] - x['confidence_lower']) ** 2).sum() ** 0.5)
+            upper_diffs = grouped.apply(lambda x: ((x['confidence_upper'] - x['predicted_requests']) ** 2).sum() ** 0.5)
+            
+            # Create final aggregated dataframe
+            aggregated = pd.DataFrame({
+                'date': predicted_sums.index.get_level_values('week'),
+                'neighborhood': predicted_sums.index.get_level_values('neighborhood'),
+                'predicted_requests': predicted_sums.values,
+                'confidence_lower': predicted_sums.values - lower_diffs.values,
+                'confidence_upper': predicted_sums.values + upper_diffs.values
+            })
+            
+            # Ensure confidence bounds are reasonable
+            aggregated['confidence_lower'] = aggregated['confidence_lower'].clip(lower=0)
+            
             return aggregated.sort_values(['date', 'neighborhood'])
             
         except Exception as e:
@@ -65,18 +82,34 @@ class DataProcessor:
             return data
     
     def _aggregate_monthly(self, data: pd.DataFrame) -> pd.DataFrame:
-        """Aggregate data by month"""
+        """Aggregate data by month with proper confidence interval calculation"""
         try:
             data_copy = data.copy()
             data_copy['month'] = data_copy['date'].dt.to_period('M').dt.start_time
             
-            aggregated = data_copy.groupby(['month', 'neighborhood']).agg({
-                'predicted_requests': 'sum',
-                'confidence_lower': 'sum',
-                'confidence_upper': 'sum'
-            }).reset_index()
+            # Group and aggregate predictions
+            grouped = data_copy.groupby(['month', 'neighborhood'])
             
-            aggregated.rename(columns={'month': 'date'}, inplace=True)
+            # Sum the predicted requests
+            predicted_sums = grouped['predicted_requests'].sum()
+            
+            # For confidence intervals, use statistical combination
+            # Assuming independence, variance adds when summing random variables
+            lower_diffs = grouped.apply(lambda x: ((x['predicted_requests'] - x['confidence_lower']) ** 2).sum() ** 0.5)
+            upper_diffs = grouped.apply(lambda x: ((x['confidence_upper'] - x['predicted_requests']) ** 2).sum() ** 0.5)
+            
+            # Create final aggregated dataframe
+            aggregated = pd.DataFrame({
+                'date': predicted_sums.index.get_level_values('month'),
+                'neighborhood': predicted_sums.index.get_level_values('neighborhood'),
+                'predicted_requests': predicted_sums.values,
+                'confidence_lower': predicted_sums.values - lower_diffs.values,
+                'confidence_upper': predicted_sums.values + upper_diffs.values
+            })
+            
+            # Ensure confidence bounds are reasonable
+            aggregated['confidence_lower'] = aggregated['confidence_lower'].clip(lower=0)
+            
             return aggregated.sort_values(['date', 'neighborhood'])
             
         except Exception as e:

@@ -619,8 +619,10 @@ class FixedSF311Pipeline:
             end_date = historical_data['date'].max()
             start_date = end_date - pd.Timedelta(days=days_back)
             
-            historical_data_dates = pd.to_datetime(historical_data['date'])
-            mask = (historical_data_dates >= start_date) & (historical_data_dates <= end_date)
+            # Convert both dates to same type for comparison
+            historical_data = historical_data.copy()
+            historical_data['date'] = pd.to_datetime(historical_data['date'])
+            mask = (historical_data['date'] >= pd.Timestamp(start_date)) & (historical_data['date'] <= pd.Timestamp(end_date))
             recent_data = historical_data[mask].copy()
             
             # Rename for clarity
