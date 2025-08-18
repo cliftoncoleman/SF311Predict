@@ -1,0 +1,55 @@
+Suggested tweaks (focused + actionable)
+
+Guard against mis-ordered validation indexing
+
+In backtest_and_select, your seasonal‑naive base_val_pred uses a tricky slice. Safer is to take the last val_days of the pre‑validation history and repeat the last weekly pattern:
+
+hist = df_nbhd[y_col].values
+val_len = len(val_df)
+base_val_pred = seasonal_naive_forecast(hist[:-val_len], val_len, season=7)
+
+
+Consistent exog columns for SARIMAX
+
+You do this mostly right; ensure exog_cols is exactly the same set when you re‑fit on the full history and when you create future exog. If any column is missing (e.g., you changed FOURIER_K_YEAR), SARIMAX will silently misbehave. Consider asserting:
+
+assert set(exog_cols).issubset(fe_full.columns), "Missing exog cols for SARIMAX re-fit"
+
+
+Remove the duplicate yhat_hi_dup bookkeeping
+
+You already drop it; just don’t add it in the first place. It’ll keep the pipeline cleaner.
+
+Stability with zeros (MAPE)
+
+You already clamp by eps; good. For publishing, I’d also compute MASE (scale by in‑sample naive error) since many neighborhoods can be sparse:
+
+def mase(y_true, y_pred, season=7):
+    y_true = np.asarray(y_true, float); y_pred = np.asarray(y_pred, float)
+    denom = np.mean(np.abs(y_true[season:] - y_true[:-season])) if len(y_true) > season else np.mean(np.abs(np.diff(y_true))) + 1e-6
+    return np.mean(np.abs(y_true - y_pred)) / max(denom, 1e-6)
+
+
+Speed + determinism for Replit
+
+Cut max_iter on HistGradientBoostingRegressor to ~300 and keep random_state=42.
+
+Optionally add early stopping:
+
+HistGradientBoostingRegressor(
+    loss="poisson", max_iter=300, learning_rate=0.05,
+    early_stopping=True, validation_fraction=0.15, random_state=42
+)
+
+
+Faster recursive ML forecasting
+
+Instead of rebuilding all features each step, cache the last 28 days and update lags/rolls incrementally. (If you want, I can drop in an incremental helper later.) For now your method is OK—just keep horizon modest (≤90).
+
+App‑friendly artifacts
+
+In addition to CSVs, emit a compact JSON grouped by neighborhood and include generated_at_utc + horizon_days. This avoids heavy CSV parsing on the frontend.
+
+Basic schema checks before saving
+
+Verify yhat_lo ≤ yhat ≤ yhat_hi, non‑negativity, and no NaNs. If any fail, log and cap to zero as you already do.
