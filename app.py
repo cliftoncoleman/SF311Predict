@@ -93,8 +93,8 @@ def main():
             index=0
         )
         
-        # Move historical comparison to bottom section
-        st.subheader("🎯 Chart Settings")
+        # Historical comparison settings
+        st.subheader("📊 Historical Comparison")
         show_historical = st.checkbox("Show actual vs predicted", value=False)
         if show_historical:
             historical_days = st.slider(
@@ -104,6 +104,8 @@ def main():
                 value=90,
                 step=30
             )
+        else:
+            historical_days = 90  # Default value when not showing historical
     
     # Main content area
     if st.session_state.data is None:
