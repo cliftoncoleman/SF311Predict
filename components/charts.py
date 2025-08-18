@@ -44,9 +44,9 @@ class ChartGenerator:
                     marker=dict(size=6, symbol='diamond')
                 ))
             
-            # Add individual neighborhood lines (top 5 by total requests)
+            # Add individual neighborhood lines (all neighborhoods)
             neighborhood_sums = data.groupby('neighborhood')['predicted_requests'].sum()
-            top_neighborhoods = neighborhood_sums.nlargest(5)
+            top_neighborhoods = neighborhood_sums.sort_values(ascending=False)  # Show all neighborhoods
             
             for i, neighborhood in enumerate(top_neighborhoods.index):
                 neighborhood_data = data[data['neighborhood'] == neighborhood]

@@ -70,7 +70,7 @@ def main():
             selected_neighborhoods = st.multiselect(
                 "Select neighborhoods:",
                 options=st.session_state.neighborhoods,
-                default=st.session_state.neighborhoods[:5] if len(st.session_state.neighborhoods) > 5 else st.session_state.neighborhoods,
+                default=st.session_state.neighborhoods,  # Show all neighborhoods by default
                 help="Choose specific neighborhoods to analyze"
             )
         else:
@@ -95,17 +95,15 @@ def main():
         
         # Historical comparison settings
         st.subheader("📊 Historical Comparison")
-        show_historical = st.checkbox("Show actual vs predicted", value=False)
-        if show_historical:
-            historical_days = st.slider(
-                "Historical period (days):",
-                min_value=30,
-                max_value=180,
-                value=90,
-                step=30
-            )
-        else:
-            historical_days = 90  # Default value when not showing historical
+        show_historical = st.checkbox("Show actual vs predicted", value=True)  # Default to True
+        historical_days = st.slider(
+            "Historical period (days):",
+            min_value=30,
+            max_value=180,
+            value=90,
+            step=30,
+            help="Number of days of historical data to compare against predictions"
+        )
     
     # Main content area
     if st.session_state.data is None:
