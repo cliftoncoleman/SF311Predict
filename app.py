@@ -109,7 +109,11 @@ def main():
     
     # Main content area
     if st.session_state.data is None:
-        # Initial load screen
+        # Auto-load data on first visit
+        load_data()
+        
+    if st.session_state.data is None:
+        # If data still failed to load, show fallback
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             st.info("👋 Welcome! Click 'Refresh Data' to load SF311 predictions.")
@@ -133,7 +137,7 @@ def main():
             
             # Get historical data for comparison if requested
             historical_data = None
-            if 'show_historical' in locals() and show_historical:
+            if show_historical:
                 with st.spinner("Loading historical comparison data..."):
                     historical_data = api_client.get_historical_comparison_data(historical_days)
             

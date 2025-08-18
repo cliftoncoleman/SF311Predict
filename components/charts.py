@@ -48,15 +48,7 @@ class ChartGenerator:
                     fillcolor='rgba(68, 68, 68, 0.2)'
                 ))
             
-            # Add main prediction line
-            fig.add_trace(go.Scatter(
-                x=daily_totals['date'],
-                y=daily_totals['predicted_requests'],
-                mode='lines+markers',
-                name='Predicted Requests',
-                line=dict(color='#2E86C1', width=3),
-                marker=dict(size=6)
-            ))
+            # Skip the main prediction line to avoid overwhelming the chart
             
             # Add historical actual data if available
             if historical_data is not None and not historical_data.empty:
