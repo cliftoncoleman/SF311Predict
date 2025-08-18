@@ -14,6 +14,8 @@ import streamlit as st
 import warnings
 warnings.filterwarnings('ignore')
 
+from neighborhood_coalescer import apply_neighborhood_coalescing
+
 
 def seasonal_naive_forecast(hist_values: np.ndarray, n_periods: int, season: int = 7) -> np.ndarray:
     """Generate seasonal naive forecast by repeating last seasonal pattern"""
@@ -106,12 +108,13 @@ class FixedSF311Pipeline:
         except Exception:
             return set()
 
-    def pick_neighborhood_field(self, field_names: set) -> str:
-        """Pick the best available neighborhood field"""
+    def get_available_neighborhood_fields(self, field_names: set) -> List[str]:
+        """Get all available neighborhood fields, prioritizing analysis boundaries"""
+        available_fields = []
         for f in self.neighbor_pref_order:
             if f in field_names:
-                return f
-        return self.neighbor_pref_order[0]
+                available_fields.append(f)
+        return available_fields if available_fields else [self.neighbor_pref_order[0]]
 
     def month_windows(self, start_date: dt.date, end_date: dt.date):
         """Generate month windows for data fetching"""
@@ -126,15 +129,19 @@ class FixedSF311Pipeline:
             yield win_start.isoformat(), win_end.isoformat()
             cur = next_month
 
-    def fetch_month(self, neighborhood_field: str, win_start_iso: str, win_end_iso: str) -> pd.DataFrame:
-        """Fetch one month of data with paging"""
+    def fetch_month(self, neighborhood_fields: List[str], win_start_iso: str, win_end_iso: str) -> pd.DataFrame:
+        """Fetch one month of data with paging, including all available neighborhood fields"""
         frames = []
         offset = 0
         retries = 0
         
+        # Create select clause with all neighborhood fields
+        select_fields = [self.time_field] + neighborhood_fields
+        select_clause = ", ".join(select_fields)
+        
         while True:
             params = {
-                "$select": f"{self.time_field}, {neighborhood_field}",
+                "$select": select_clause,
                 "$where": (
                     f"{self.category_field} = '{self.category_value}' AND "
                     f"{self.time_field} >= '{win_start_iso}' AND {self.time_field} < '{win_end_iso}'"
@@ -171,21 +178,26 @@ class FixedSF311Pipeline:
             offset += self.page_size
 
         if not frames:
-            return pd.DataFrame({self.time_field: [], neighborhood_field: []})
+            # Create empty DataFrame with all expected columns
+            empty_cols = {self.time_field: []}
+            for field in neighborhood_fields:
+                empty_cols[field] = []
+            return pd.DataFrame(empty_cols)
         return pd.concat(frames, ignore_index=True)
 
     def fetch_historical_data(self, start_days: int = 365) -> pd.DataFrame:
-        """Fetch historical SF311 data"""
+        """Fetch historical SF311 data with enhanced neighborhood coalescing"""
         today = dt.date.today()
         start_date = today - dt.timedelta(days=start_days)
         
         try:
             fields = self.get_field_names()
-            nbhd_field = self.pick_neighborhood_field(fields)
+            nbhd_fields = self.get_available_neighborhood_fields(fields)
             
+            # Fetch data with all available neighborhood fields
             all_frames = []
             for win_start, win_end in self.month_windows(start_date, today):
-                df_month = self.fetch_month(nbhd_field, win_start, win_end)
+                df_month = self.fetch_month(nbhd_fields, win_start, win_end)
                 if not df_month.empty:
                     all_frames.append(df_month)
             
@@ -194,10 +206,34 @@ class FixedSF311Pipeline:
                 
             raw = pd.concat(all_frames, ignore_index=True)
             
+            # Process datetime
             raw[self.time_field] = pd.to_datetime(raw[self.time_field], errors="coerce", utc=True)
             raw["date"] = raw[self.time_field].dt.tz_convert("US/Pacific").dt.date
-            raw["neighborhood"] = raw[nbhd_field].fillna("Unknown").astype(str)
             
+            # Apply neighborhood coalescing to standardize to analysis boundaries
+            try:
+                raw_with_coalesced, coalescing_diagnostics = apply_neighborhood_coalescing(raw, verbose=False)
+                
+                # Use coalesced neighborhood or fallback
+                if "neighborhood" in raw_with_coalesced.columns:
+                    raw["neighborhood"] = raw_with_coalesced["neighborhood"].fillna("Unknown").astype(str)
+                else:
+                    # Fallback to the first available neighborhood field
+                    primary_field = nbhd_fields[0]
+                    raw["neighborhood"] = raw[primary_field].fillna("Unknown").astype(str)
+                
+                # Log coalescing results if successful
+                if 'coverage_percent' in coalescing_diagnostics:
+                    print(f"Neighborhood coalescing: {coalescing_diagnostics['coverage_percent']:.1f}% coverage, "
+                          f"{coalescing_diagnostics['unique_neighborhoods']} unique neighborhoods")
+                
+            except Exception as e:
+                print(f"Warning: Neighborhood coalescing failed ({e}), using fallback")
+                # Fallback to primary field
+                primary_field = nbhd_fields[0]
+                raw["neighborhood"] = raw[primary_field].fillna("Unknown").astype(str)
+            
+            # Aggregate to daily counts
             daily_counts = raw.groupby(["date", "neighborhood"], as_index=False).size()
             daily_counts = daily_counts.rename(columns={"size": "cases"})
             daily = daily_counts.sort_values(["date", "neighborhood"]).reset_index(drop=True)
