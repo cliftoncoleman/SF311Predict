@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import numpy as np
 from fixed_pipeline import FixedSF311Pipeline
+from utils.data_processor import DataProcessor
 
 # Page configuration
 st.set_page_config(
@@ -26,7 +27,12 @@ if 'last_working_refresh' not in st.session_state:
 def get_working_pipeline():
     return FixedSF311Pipeline()
 
+@st.cache_resource
+def get_data_processor():
+    return DataProcessor()
+
 pipeline = get_working_pipeline()
+processor = get_data_processor()
 
 def create_simple_line_chart(data: pd.DataFrame) -> go.Figure:
     """Create simple working line chart"""
@@ -230,11 +236,20 @@ def main():
             
             # Chart type
             chart_type = st.selectbox("Chart Type:", ["Line Chart", "Bar Chart"])
+            
+            # Aggregation level
+            st.subheader("Data Aggregation")
+            aggregation_level = st.selectbox(
+                "Aggregation Level:",
+                ["daily", "weekly", "monthly"],
+                index=0
+            )
         else:
             st.info("Click 'Load Enhanced Data' to get started!")
             date_range = None
             selected_neighborhoods = []
             chart_type = "Line Chart"
+            aggregation_level = "daily"
     
     # Main content
     if st.session_state.working_data is None:
@@ -257,13 +272,23 @@ def main():
         st.warning("No data matches the current filters")
         return
     
+    # Apply aggregation processing
+    try:
+        aggregated_data = processor.process_for_visualization(filtered_data, aggregation_level)
+        if aggregated_data.empty:
+            st.warning("No data available after aggregation")
+            return
+    except Exception as e:
+        st.error(f"Error processing aggregation: {str(e)}")
+        aggregated_data = filtered_data
+    
     # Display chart
-    st.subheader(f"{chart_type} - Enhanced Predictions")
+    st.subheader(f"{chart_type} - Enhanced Predictions ({aggregation_level.title()} View)")
     
     if chart_type == "Line Chart":
-        fig = create_simple_line_chart(filtered_data)
+        fig = create_simple_line_chart(aggregated_data)
     else:
-        fig = create_simple_bar_chart(filtered_data)
+        fig = create_simple_bar_chart(aggregated_data)
     
     st.plotly_chart(fig, use_container_width=True)
     
@@ -271,20 +296,22 @@ def main():
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        total_requests = filtered_data['predicted_requests'].sum()
+        total_requests = aggregated_data['predicted_requests'].sum()
         st.metric("Total Predicted", f"{total_requests:,.0f}")
     
     with col2:
-        avg_requests = filtered_data['predicted_requests'].mean()
-        st.metric("Average Daily", f"{avg_requests:.1f}")
+        avg_requests = aggregated_data['predicted_requests'].mean()
+        avg_label = f"Average {aggregation_level.title()}"
+        st.metric(avg_label, f"{avg_requests:.1f}")
     
     with col3:
-        peak_requests = filtered_data['predicted_requests'].max()
-        st.metric("Peak Daily", f"{peak_requests:.0f}")
+        peak_requests = aggregated_data['predicted_requests'].max()
+        peak_label = f"Peak {aggregation_level.title()}"
+        st.metric(peak_label, f"{peak_requests:.0f}")
     
     with col4:
-        if 'confidence_lower' in filtered_data.columns:
-            avg_uncertainty = (filtered_data['confidence_upper'] - filtered_data['confidence_lower']).mean()
+        if 'confidence_lower' in aggregated_data.columns:
+            avg_uncertainty = (aggregated_data['confidence_upper'] - aggregated_data['confidence_lower']).mean()
             st.metric("Avg Uncertainty", f"±{avg_uncertainty/2:.1f}")
     
     # Data quality metrics
@@ -294,32 +321,96 @@ def main():
     col1, col2 = st.columns(2)
     
     with col1:
-        total_records = len(filtered_data)
-        valid_predictions = (filtered_data['predicted_requests'] >= 0).sum()
+        total_records = len(aggregated_data)
+        valid_predictions = (aggregated_data['predicted_requests'] >= 0).sum()
         st.metric("Non-negative Predictions", f"{valid_predictions}/{total_records}")
     
     with col2:
-        if 'confidence_lower' in filtered_data.columns and 'confidence_upper' in filtered_data.columns:
-            valid_intervals = ((filtered_data['confidence_lower'] <= filtered_data['predicted_requests']) & 
-                             (filtered_data['predicted_requests'] <= filtered_data['confidence_upper'])).sum()
+        if 'confidence_lower' in aggregated_data.columns and 'confidence_upper' in aggregated_data.columns:
+            valid_intervals = ((aggregated_data['confidence_lower'] <= aggregated_data['predicted_requests']) & 
+                             (aggregated_data['predicted_requests'] <= aggregated_data['confidence_upper'])).sum()
             st.metric("Valid Confidence Intervals", f"{valid_intervals}/{total_records}")
     
-    # Show data table
-    with st.expander("Detailed Data", expanded=False):
+    # Detailed Data Table
+    st.markdown("---")
+    st.subheader("📋 Detailed Predictions")
+    
+    # Display options for table
+    col1, col2 = st.columns([3, 1])
+    with col2:
+        show_raw_data = st.checkbox("Show raw data", value=False)
+    
+    if show_raw_data:
         display_data = filtered_data.copy()
         display_data['date'] = pd.to_datetime(display_data['date']).dt.strftime('%Y-%m-%d')
         display_data = display_data.round(2)
-        
-        st.dataframe(display_data, use_container_width=True)
-        
-        # Download button
-        csv_data = filtered_data.to_csv(index=False)
-        st.download_button(
-            label="Download Data as CSV",
-            data=csv_data,
-            file_name=f"sf311_predictions_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-            mime="text/csv"
+        st.dataframe(
+            display_data.sort_values(['date', 'neighborhood']),
+            use_container_width=True,
+            hide_index=True
         )
+    else:
+        # Show aggregated data
+        display_data = aggregated_data.copy()
+        display_data['date'] = pd.to_datetime(display_data['date']).dt.strftime('%Y-%m-%d')
+        display_data = display_data.round(2)
+        st.dataframe(
+            display_data.sort_values(['date', 'neighborhood']),
+            use_container_width=True,
+            hide_index=True
+        )
+    
+    # Download button
+    csv_data = aggregated_data.to_csv(index=False)
+    st.download_button(
+        label="Download Aggregated Data as CSV",
+        data=csv_data,
+        file_name=f"sf311_predictions_{aggregation_level}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+        mime="text/csv"
+    )
+    
+    # Try to load and display historical data for comparison
+    try:
+        st.markdown("---")
+        st.subheader("📊 Historical Data Comparison")
+        
+        with st.spinner("Loading historical data for comparison..."):
+            historical_data = pipeline.get_historical_vs_predicted(days_back=30)
+            
+        if historical_data is not None and not historical_data.empty:
+            # Create comparison table
+            historical_summary = historical_data.groupby('neighborhood').agg({
+                'actual_requests': ['sum', 'mean']
+            }).round(1)
+            
+            # Flatten column names
+            historical_summary.columns = ['Total Actual', 'Avg Daily Actual']
+            historical_summary = historical_summary.reset_index()
+            
+            # Add predicted data for comparison
+            predicted_summary = aggregated_data.groupby('neighborhood').agg({
+                'predicted_requests': ['sum', 'mean']
+            }).round(1)
+            predicted_summary.columns = ['Total Predicted', 'Avg Daily Predicted']
+            predicted_summary = predicted_summary.reset_index()
+            
+            # Merge the data
+            comparison_table = historical_summary.merge(predicted_summary, on='neighborhood', how='outer').fillna(0)
+            
+            # Calculate accuracy metrics where possible
+            comparison_table['Difference'] = (comparison_table['Avg Daily Predicted'] - comparison_table['Avg Daily Actual']).round(1)
+            
+            st.dataframe(
+                comparison_table.sort_values('Total Predicted', ascending=False),
+                use_container_width=True,
+                hide_index=True
+            )
+        else:
+            st.info("Historical data not available for comparison")
+            
+    except Exception as e:
+        st.info("Historical data comparison not available")
+        print(f"Historical data error: {e}")
 
 if __name__ == "__main__":
     main()
