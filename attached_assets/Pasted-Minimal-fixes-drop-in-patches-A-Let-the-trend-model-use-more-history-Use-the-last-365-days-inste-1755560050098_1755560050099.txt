@@ -1,0 +1,60 @@
+Minimal fixes (drop-in patches)
+A) Let the trend model use more history
+
+Use the last 365 days instead of 28:
+
+# in _train_trend_model
+# recent_data = train_df.tail(28).copy()
+recent_data = train_df.tail(365).copy()
+if len(recent_data) < 60:
+    return None
+
+B) Make selection care about longer patterns
+
+Use a longer validation window and prefer ML if close:
+
+# in backtest_and_select_model signature
+def backtest_and_select_model(..., val_days: int = 90):  # was 30
+
+# after you compute candidates:
+# prefer ML if it's within 5% MASE of the best and not weekly-flat
+best = min(candidates, key=lambda m: (m.get("penalized_mase", np.inf),
+                                      m.get("weekly_repeat_score", 1.0)))
+mls = [c for c in candidates if c["model_type"] == "ml"]
+if mls:
+    ml = min(mls, key=lambda m: m["penalized_mase"])
+    if (ml["penalized_mase"] <= 1.05 * best["penalized_mase"]
+        and ml.get("weekly_repeat_score", 1.0) >= 0.1):
+        best = ml
+
+
+…and make the repetition penalty actually bite:
+
+# penalize weekly-flat harder
+for c in candidates:
+    rep = c.get("weekly_repeat_score", 1.0)
+    c["penalized_mase"] = c.get("mase_score", np.inf) * (3.0 if rep < 0.1 else 1.0)
+
+C) Give the ML model time-decay weights (uses all history, favors recent)
+# in _train_ml_model (after X_train, y_train are built)
+t = np.arange(len(X_train), dtype=float)
+w = 0.3 + 0.7*(t / max(t.max(), 1))   # oldest ~0.3, newest 1.0
+model.fit(X_train, y_train, sample_weight=w)
+
+# do the same for quantile models if you use them:
+lo_model.fit(X_train, y_train, sample_weight=w)
+hi_model.fit(X_train, y_train, sample_weight=w)
+
+D) Sanity-log that each neighborhood truly sees 5y
+
+Right before training per neighborhood:
+
+nbhd_data = nbhd_data.sort_values('date')
+print(f"[{neighborhood}] train span:", nbhd_data['date'].min(), "→", nbhd_data['date'].max(),
+      "| rows:", len(nbhd_data))
+
+E) (Optional) Raise the bar for using simple/short models
+
+Skip trend if < 90 training rows.
+
+Skip seasonal-naive unless it’s clearly better (e.g., ≥10% MASE better than ML).

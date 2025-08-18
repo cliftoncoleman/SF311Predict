@@ -271,7 +271,7 @@ class FixedSF311Pipeline:
         d = np.abs(yhat[7:] - yhat[:-7])
         return float(np.median(d) / (1 + np.median(yhat)))
 
-    def backtest_and_select_model(self, df_nbhd: pd.DataFrame, y_col: str = 'cases', val_days: int = 30) -> Dict[str, Any]:
+    def backtest_and_select_model(self, df_nbhd: pd.DataFrame, y_col: str = 'cases', val_days: int = 90) -> Dict[str, Any]:
         """Improved model selection with weekly-flat detection"""
         if len(df_nbhd) < val_days + 60:
             return {"model_type": "seasonal_naive", "model": None, "score": float('inf')}
@@ -307,8 +307,8 @@ class FixedSF311Pipeline:
             "predictions": base_val_pred
         }]
         
-        # Try ML model if enough data (lower threshold)
-        if len(train_df) >= 35:  # Further lowered to get more ML models
+        # Try ML model if enough data (raise the bar for trend models)
+        if len(train_df) >= 90:  # Raised threshold to prefer ML with sufficient data
             try:
                 ml_result = self._train_ml_model(train_df, val_df, y_col)
                 if ml_result:
@@ -338,15 +338,15 @@ class FixedSF311Pipeline:
         except Exception:
             pass
         
-        # Select by 2-key sort: MASE then weekly repetition (lower is better)
-        # But heavily penalize weekly-flat models
+        # Penalize weekly-flat models harder and prefer ML if competitive
         for candidate in candidates:
             weekly_score = candidate.get("weekly_repeat_score", 1.0)
             if weekly_score < 0.1:  # Very repetitive
-                candidate["penalized_mase"] = candidate.get("mase_score", np.inf) * 2.0  # Double penalty
+                candidate["penalized_mase"] = candidate.get("mase_score", np.inf) * 3.0  # Triple penalty
             else:
                 candidate["penalized_mase"] = candidate.get("mase_score", np.inf)
         
+        # Prefer ML if it's within 5% MASE of the best and not weekly-flat
         best_model = min(
             candidates,
             key=lambda m: (
@@ -354,6 +354,14 @@ class FixedSF311Pipeline:
                 m.get("weekly_repeat_score", 1.0)
             )
         )
+        
+        # Check if ML model is competitive
+        mls = [c for c in candidates if c["model_type"] == "ml"]
+        if mls:
+            ml = min(mls, key=lambda m: m["penalized_mase"])
+            if (ml["penalized_mase"] <= 1.05 * best_model["penalized_mase"]
+                and ml.get("weekly_repeat_score", 1.0) >= 0.1):
+                best_model = ml
         
         # Debug logging
         print(f"Model selection for neighborhood: {len(candidates)} candidates")
@@ -371,9 +379,9 @@ class FixedSF311Pipeline:
             from sklearn.linear_model import LinearRegression
             from sklearn.preprocessing import PolynomialFeatures
             
-            # Use more recent data for better trend capture
-            recent_data = train_df.tail(28).copy()  # Last 4 weeks
-            if len(recent_data) < 14:
+            # Use last 365 days instead of 28 to utilize more history
+            recent_data = train_df.tail(365).copy()
+            if len(recent_data) < 60:
                 return None
                 
             recent_data = recent_data.reset_index(drop=True)
@@ -588,6 +596,10 @@ class FixedSF311Pipeline:
             X_train = train_features[feature_cols].fillna(0)
             y_train = train_features[y_col].fillna(0).astype(float)
             
+            # Add time-decay weights (uses all history, favors recent)
+            t = np.arange(len(X_train), dtype=float)
+            sample_weights = 0.3 + 0.7 * (t / max(t.max(), 1))  # oldest ~0.3, newest 1.0
+            
             # Main point model
             model = HistGradientBoostingRegressor(
                 loss="poisson",
@@ -595,7 +607,7 @@ class FixedSF311Pipeline:
                 learning_rate=0.05,
                 random_state=42
             )
-            model.fit(X_train, y_train)
+            model.fit(X_train, y_train, sample_weight=sample_weights)
             
             # Train quantile models for better confidence intervals
             lo_model = GradientBoostingRegressor(
@@ -608,8 +620,8 @@ class FixedSF311Pipeline:
             )
             
             try:
-                lo_model.fit(X_train, y_train)
-                hi_model.fit(X_train, y_train)
+                lo_model.fit(X_train, y_train, sample_weight=sample_weights)
+                hi_model.fit(X_train, y_train, sample_weight=sample_weights)
                 quantile_models_available = True
             except:
                 quantile_models_available = False
@@ -740,6 +752,9 @@ class FixedSF311Pipeline:
         for neighborhood in neighborhoods:
             nbhd_data = historical_data[historical_data['neighborhood'] == neighborhood].copy()
             nbhd_data = nbhd_data.sort_values('date').reset_index(drop=True)
+            
+            # Sanity-log that each neighborhood truly sees 5y
+            print(f"[{neighborhood}] train span: {nbhd_data['date'].min().date()} → {nbhd_data['date'].max().date()} | rows: {len(nbhd_data)}")
             
             # Guardrails for small/volatile neighborhoods
             MIN_TRAIN_DAYS = 30
