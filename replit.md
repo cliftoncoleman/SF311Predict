@@ -8,6 +8,14 @@ This is a Streamlit-based web dashboard for visualizing SF311 street and sidewal
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+### August 18, 2025
+- ✓ Built complete Streamlit dashboard for SF311 Street & Sidewalk Cleaning predictions
+- ✓ Added demo data functionality for testing and preview
+- ✓ User confirmed dashboard design and functionality looks good
+- → Next: Connect to user's actual prediction API/data source
+
 ## System Architecture
 
 ### Frontend Architecture
