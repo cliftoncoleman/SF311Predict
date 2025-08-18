@@ -564,48 +564,10 @@ def main():
         mime="text/csv"
     )
     
-    # Try to load and display historical data for comparison
-    try:
-        st.markdown("---")
-        st.subheader("📊 Historical Data Comparison")
-        
-        with st.spinner("Loading historical data for comparison..."):
-            historical_data = pipeline.get_historical_vs_predicted(days_back=30)
-            
-        if historical_data is not None and not historical_data.empty:
-            # Create comparison table
-            historical_summary = historical_data.groupby('neighborhood').agg({
-                'actual_requests': ['sum', 'mean']
-            }).round(1)
-            
-            # Flatten column names
-            historical_summary.columns = ['Total Actual', 'Avg Daily Actual']
-            historical_summary = historical_summary.reset_index()
-            
-            # Add predicted data for comparison
-            predicted_summary = aggregated_data.groupby('neighborhood').agg({
-                'predicted_requests': ['sum', 'mean']
-            }).round(1)
-            predicted_summary.columns = ['Total Predicted', 'Avg Daily Predicted']
-            predicted_summary = predicted_summary.reset_index()
-            
-            # Merge the data
-            comparison_table = historical_summary.merge(predicted_summary, on='neighborhood', how='outer').fillna(0)
-            
-            # Calculate accuracy metrics where possible
-            comparison_table['Difference'] = (comparison_table['Avg Daily Predicted'] - comparison_table['Avg Daily Actual']).round(1)
-            
-            st.dataframe(
-                comparison_table.sort_values('Total Predicted', ascending=False),
-                use_container_width=True,
-                hide_index=True
-            )
-        else:
-            st.info("Historical data not available for comparison")
-            
-    except Exception as e:
-        st.info("Historical data comparison not available")
-        print(f"Historical data error: {e}")
+    # Historical data comparison disabled to prevent interference with 5-year training
+    # Use "Show Historical Validation" button instead for manual comparison
+    st.markdown("---")
+    st.info("💡 **Tip**: Use the 'Show Historical Validation' button in the sidebar to compare predictions with recent historical data without interfering with the 5-year training process.")
 
 if __name__ == "__main__":
     main()

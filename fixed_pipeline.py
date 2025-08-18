@@ -1083,7 +1083,9 @@ class FixedSF311Pipeline:
     def get_historical_vs_predicted(self, days_back: int = 90) -> pd.DataFrame:
         """Get historical actual data for comparison with predictions"""
         try:
-            # Fetch recent historical data
+            # Fetch recent historical data - using separate call for validation only
+            print(f"*** VALIDATION DATA FETCH (NOT FOR TRAINING) ***")
+            print(f"Fetching {days_back + 30} days for validation comparison only")
             historical_data = self.fetch_historical_data(start_days=days_back + 30)
             
             if historical_data.empty:
