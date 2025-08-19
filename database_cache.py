@@ -252,11 +252,23 @@ class SmartSF311Pipeline:
                 
                 # Store in cache
                 st.info(f"💾 Storing {len(fresh_data)} records in cache...")
-                self.cache.store_data(fresh_data)
                 
-                # Verify storage
-                count_after = self.cache.get_data_count()
-                st.info(f"📊 Cache now contains {count_after} total records")
+                try:
+                    self.cache.store_data(fresh_data)
+                    # Verify storage immediately
+                    count_after = self.cache.get_data_count()
+                    st.info(f"📊 Cache now contains {count_after} total records")
+                    
+                    if count_after == 0:
+                        st.error("❌ Storage failed - cache is still empty!")
+                        # Try manual storage debug
+                        st.info("🔧 Debugging storage issue...")
+                        sample_data = fresh_data.head(5)
+                        st.write("Sample data to store:", sample_data)
+                        
+                except Exception as storage_error:
+                    st.error(f"❌ Cache storage failed: {storage_error}")
+                    st.info("📝 Will use data directly without caching")
                 
                 self.cache.update_metadata('last_full_update', datetime.now().isoformat())
                 st.success(f"✅ Successfully cached {len(fresh_data)} new records")
