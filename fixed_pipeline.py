@@ -190,17 +190,86 @@ class FixedSF311Pipeline:
             return pd.DataFrame(empty_cols)
         return pd.concat(frames, ignore_index=True)
 
+    def fetch_range(self, start_date: dt.date, end_date: dt.date) -> pd.DataFrame:
+        """Fetch SF311 data for specific date range"""
+        # Debug logging
+        days_span = (end_date - start_date).days + 1
+        years = days_span / 365.25
+        print(f"*** FETCH_RANGE CALLED ***")
+        print(f"Fetching {days_span} days of data ({years:.1f} years)")
+        print(f"Date range: {start_date} to {end_date}")
+        
+        try:
+            fields = self.get_field_names()
+            nbhd_fields = self.get_available_neighborhood_fields(fields)
+            
+            # Fetch data with all available neighborhood fields
+            all_frames = []
+            for win_start, win_end in self.month_windows(start_date, end_date):
+                df_month = self.fetch_month(nbhd_fields, win_start, win_end)
+                if not df_month.empty:
+                    all_frames.append(df_month)
+            
+            if not all_frames:
+                return pd.DataFrame()
+                
+            raw = pd.concat(all_frames, ignore_index=True)
+            
+            # Process datetime
+            raw[self.time_field] = pd.to_datetime(raw[self.time_field], errors="coerce", utc=True)
+            raw["date"] = raw[self.time_field].dt.tz_convert("US/Pacific").dt.date
+            
+            # Apply neighborhood coalescing to standardize to analysis boundaries
+            try:
+                raw_with_coalesced, coalescing_diagnostics = apply_neighborhood_coalescing(raw, verbose=False)
+                
+                # Use coalesced neighborhood or fallback
+                if "neighborhood" in raw_with_coalesced.columns:
+                    raw["neighborhood"] = raw_with_coalesced["neighborhood"].fillna("Unknown").astype(str)
+                else:
+                    # Fallback to the first available neighborhood field
+                    primary_field = nbhd_fields[0]
+                    raw["neighborhood"] = raw[primary_field].fillna("Unknown").astype(str)
+                
+                # Log coalescing results if successful
+                if 'coverage_percent' in coalescing_diagnostics:
+                    print(f"Neighborhood coalescing: {coalescing_diagnostics['coverage_percent']:.1f}% coverage, "
+                          f"{coalescing_diagnostics['unique_neighborhoods']} unique neighborhoods")
+                
+            except Exception as e:
+                print(f"Warning: Neighborhood coalescing failed ({e}), using fallback")
+                # Fallback to primary field
+                primary_field = nbhd_fields[0]
+                raw["neighborhood"] = raw[primary_field].fillna("Unknown").astype(str)
+            
+            # Aggregate to daily counts  
+            daily_counts = raw.groupby(["date", "neighborhood"], as_index=False).size()
+            daily_counts.rename(columns={"size": "cases"}, inplace=True)
+            daily = daily_counts.sort_values(["date", "neighborhood"]).reset_index(drop=True)
+            
+            # Filter to exact date range requested
+            daily = daily[(daily['date'] >= start_date) & (daily['date'] <= end_date)]
+            
+            print(f"Loaded {len(daily)} records from {daily['date'].min()} to {daily['date'].max()}")
+            
+            # Debug: Check Mission neighborhood as indicator
+            mission_data = daily[daily['neighborhood'].str.contains('Mission', case=False, na=False)]
+            if not mission_data.empty:
+                print(f"Mission neighborhood: {len(mission_data)} records")
+            
+            return daily
+            
+        except Exception as e:
+            st.error(f"Error fetching SF311 range data: {str(e)}")
+            return pd.DataFrame()
+
     def fetch_historical_data(self, start_days: int = 1825) -> pd.DataFrame:  # 5 years default
         """Fetch historical SF311 data with enhanced neighborhood coalescing"""
         today = dt.date.today()
         start_date = today - dt.timedelta(days=start_days)
         
-        # Debug logging to confirm 5-year data loading
-        years = start_days / 365.25
-        print(f"*** FETCH_HISTORICAL_DATA CALLED ***")
-        print(f"Fetching {start_days} days of historical data ({years:.1f} years)")
-        print(f"Date range: {start_date} to {today}")
-        print(f"*** This should be 1825 days (5 years) for training ***")
+        # Use the new range method for consistent behavior
+        return self.fetch_range(start_date, today)
         
         try:
             fields = self.get_field_names()
