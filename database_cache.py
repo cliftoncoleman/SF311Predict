@@ -189,34 +189,37 @@ class SmartSF311Pipeline:
     
     def needs_update(self, target_days: int = 1825) -> Tuple[bool, Optional[date], Optional[date]]:
         """Check if we need to fetch new data"""
-        last_cached = self.cache.get_last_update_date()
         today = date.today()
         target_start = today - timedelta(days=target_days)
         
-        if not last_cached:
-            # No data at all - need full fetch
+        # Check actual record count and date span
+        record_count = self.cache.get_data_count()
+        
+        # If we have very few records, do a full fetch
+        if record_count < 1000:  # Less than ~3 years of data
             return True, target_start, today
         
         # Check if we have data spanning the full target range
-        # Get earliest date in our cache
         with self.cache.get_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT MIN(date) FROM sf311_raw_data")
+                cur.execute("SELECT MIN(date), MAX(date), COUNT(*) FROM sf311_raw_data")
                 result = cur.fetchone()
-                earliest_cached = result[0] if result and result[0] else None
+                if not result or not result[0] or not result[1]:
+                    return True, target_start, today
+                
+                earliest_cached, last_cached, total_records = result
         
-        if not earliest_cached:
-            # No data - need full fetch
+        # Check if we have sufficient historical coverage
+        days_cached = (last_cached - earliest_cached).days
+        if days_cached < target_days * 0.9:  # Less than 90% coverage
             return True, target_start, today
         
-        # Check if we have the full historical span
-        if earliest_cached > target_start:
-            # Missing historical data - fetch from target start to earliest we have
+        # Check if earliest date is too recent (missing historical data)
+        if earliest_cached > target_start + timedelta(days=30):  # More than 30 days gap
             return True, target_start, earliest_cached - timedelta(days=1)
         
         # Check if we're missing recent data
-        if last_cached < today - timedelta(days=1):
-            # Missing recent data - incremental fetch
+        if last_cached < today - timedelta(days=2):
             return True, last_cached + timedelta(days=1), today
         
         # Cache is complete
