@@ -93,24 +93,23 @@ def create_simple_bar_chart(data: pd.DataFrame) -> go.Figure:
     
     return fig
 
-def load_working_data():
-    """Load data using the working pipeline"""
+def load_working_data(force_refresh: bool = False):
+    """Load data using smart database caching for dramatically improved performance"""
     try:
-        with st.spinner("Loading SF311 data with 5-year training pipeline..."):
-            # Clear all Streamlit caches first
-            st.cache_data.clear()
-            st.cache_resource.clear()
+        with st.spinner("Loading SF311 data with smart caching..."):
+            # Clear Streamlit caches if force refresh
+            if force_refresh:
+                st.cache_data.clear()
+                st.cache_resource.clear()
             
-            # Create completely fresh pipeline instance to bypass any caching issues
-            fresh_pipeline = FixedSF311Pipeline()
+            # Use smart caching pipeline for much faster data loading
+            from database_cache import SmartSF311Pipeline
+            smart_pipeline = SmartSF311Pipeline()
             
-            # Explicitly verify the days_back parameter
-            st.info("Loading 1825 days (5 years) of historical data for training...")
-            
-            # Use 5 years of training data for robust modeling
-            predictions = fresh_pipeline.run_full_fixed_pipeline(
-                days_back=1825,  # 5 years for robust training  
-                prediction_days=None  # Full year forecast (restored)
+            # Generate predictions with intelligent caching (only fetches new data)
+            predictions = smart_pipeline.generate_predictions_with_cache(
+                target_days=1825,  # 5 years for robust training
+                force_refresh=force_refresh
             )
             
             if not predictions.empty:
@@ -140,16 +139,8 @@ def load_working_data():
                 
 
                 
-                # Save predictions
-                try:
-                    saved_files = pipeline.save_predictions_enhanced(predictions, "output")
-                    st.success(f"Data loaded! {len(predictions)} records from {len(st.session_state.working_neighborhoods)} neighborhoods")
-                    with st.expander("Files saved"):
-                        st.write(f"CSV: {saved_files['csv_path']}")
-                        st.write(f"JSON: {saved_files['json_path']}")
-                except Exception as e:
-                    st.success(f"Data loaded! {len(predictions)} records from {len(st.session_state.working_neighborhoods)} neighborhoods")
-                    st.info(f"Note: File saving encountered an issue: {str(e)}")
+                # Show success message
+                st.success(f"🚀 Smart caching enabled! {len(predictions)} records from {len(st.session_state.working_neighborhoods)} neighborhoods")
             else:
                 st.error("No data could be loaded")
                 
@@ -243,8 +234,13 @@ def main():
     with st.sidebar:
         st.header("Dashboard Controls")
         
-        if st.button("Load Enhanced Data", type="primary"):
-            load_working_data()
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            if st.button("Load Enhanced Data", type="primary"):
+                load_working_data()
+        with col2:
+            if st.button("🔄", help="Force refresh - clears cache and fetches all data"):
+                load_working_data(force_refresh=True)
         
 
         
