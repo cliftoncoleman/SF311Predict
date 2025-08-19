@@ -19,17 +19,34 @@ from neighborhood_coalescer import apply_neighborhood_coalescing
 
 
 def seasonal_naive_forecast(hist_values: np.ndarray, n_periods: int, season: int = 7) -> np.ndarray:
-    """Generate seasonal naive forecast by repeating last seasonal pattern"""
+    """
+    Improved seasonal naive forecast: uses multiple cycles with averaging for stable weekly patterns
+    """
     if len(hist_values) < season:
         return np.full(n_periods, max(hist_values[-1] if len(hist_values) > 0 else 1.0, 0))
     
-    last_season = hist_values[-season:]
+    # Use multiple recent cycles for more stable patterns
+    # Take the last 3-4 weeks and average by day-of-week
+    n_cycles = min(4, len(hist_values) // season)
+    if n_cycles >= 3:
+        # Average the last few cycles to get stable weekly pattern
+        recent_data = hist_values[-(n_cycles * season):]
+        pattern = np.zeros(season)
+        for i in range(season):
+            # Get values for this day of week across recent cycles
+            day_values = recent_data[i::season]
+            pattern[i] = np.mean(day_values) if len(day_values) > 0 else 0
+    else:
+        # Use the last full seasonal cycle
+        pattern = hist_values[-season:]
+    
+    # Repeat the stable pattern
     n_full_cycles = n_periods // season
     remainder = n_periods % season
     
-    forecast = np.tile(last_season, n_full_cycles)
+    forecast = np.tile(pattern, n_full_cycles)
     if remainder > 0:
-        forecast = np.concatenate([forecast, last_season[:remainder]])
+        forecast = np.concatenate([forecast, pattern[:remainder]])
     
     return np.maximum(forecast, 0)
 
