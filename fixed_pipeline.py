@@ -20,35 +20,56 @@ from neighborhood_coalescer import apply_neighborhood_coalescing
 
 def seasonal_naive_forecast(hist_values: np.ndarray, n_periods: int, season: int = 7) -> np.ndarray:
     """
-    Improved seasonal naive forecast: uses multiple cycles with averaging for stable weekly patterns
+    Robust seasonal naive forecast that handles sparse data (many zeros) properly
     """
     if len(hist_values) < season:
-        return np.full(n_periods, max(hist_values[-1] if len(hist_values) > 0 else 1.0, 0))
+        fallback_val = max(hist_values[-1] if len(hist_values) > 0 else 1.0, 0.1)
+        return np.full(n_periods, fallback_val)
     
-    # Use multiple recent cycles for more stable patterns
-    # Take the last 3-4 weeks and average by day-of-week
-    n_cycles = min(4, len(hist_values) // season)
-    if n_cycles >= 3:
-        # Average the last few cycles to get stable weekly pattern
-        recent_data = hist_values[-(n_cycles * season):]
+    # For sparse data, look further back to find meaningful patterns
+    # Try different lookback windows to avoid all-zero patterns
+    max_lookback = min(len(hist_values), 12 * season)  # Up to 12 weeks back
+    
+    best_pattern = None
+    best_mean = 0
+    
+    # Try multiple lookback windows to find the best non-zero pattern
+    for lookback_weeks in [4, 8, 12]:
+        lookback_days = lookback_weeks * season
+        if lookback_days > len(hist_values):
+            continue
+            
+        recent_data = hist_values[-lookback_days:]
         pattern = np.zeros(season)
+        
+        # Average by day-of-week across the lookback period
         for i in range(season):
-            # Get values for this day of week across recent cycles
             day_values = recent_data[i::season]
             pattern[i] = np.mean(day_values) if len(day_values) > 0 else 0
-    else:
-        # Use the last full seasonal cycle
-        pattern = hist_values[-season:]
+        
+        pattern_mean = np.mean(pattern)
+        
+        # Prefer patterns with higher means (more realistic for 311 data)
+        if pattern_mean > best_mean:
+            best_pattern = pattern.copy()
+            best_mean = pattern_mean
     
-    # Repeat the stable pattern
+    # If we still have a very low pattern, use overall historical mean as fallback
+    if best_pattern is None or best_mean < 0.5:
+        historical_mean = np.mean(hist_values[hist_values > 0]) if np.any(hist_values > 0) else 1.0
+        # Create a simple weekly pattern with variation
+        base_pattern = np.array([1.2, 0.8, 0.9, 1.1, 0.9, 0.7, 1.0]) * historical_mean * 0.7
+        best_pattern = base_pattern
+    
+    # Repeat the pattern to cover forecast period
     n_full_cycles = n_periods // season
     remainder = n_periods % season
     
-    forecast = np.tile(pattern, n_full_cycles)
+    forecast = np.tile(best_pattern, n_full_cycles)
     if remainder > 0:
-        forecast = np.concatenate([forecast, pattern[:remainder]])
+        forecast = np.concatenate([forecast, best_pattern[:remainder]])
     
-    return np.maximum(forecast, 0)
+    return np.maximum(forecast, 0.1)  # Ensure minimum positive values
 
 
 def mase(y_true: np.ndarray, y_pred: np.ndarray, season: int = 7) -> float:
@@ -681,6 +702,12 @@ class FixedSF311Pipeline:
             if train_features.empty or len(train_features) < 28:
                 return None
             
+            # Check if target values are reasonable (not all zeros/very low)
+            y_train_check = train_features['cases'].fillna(0).astype(float)
+            if y_train_check.mean() < 0.5:  # If average is less than 0.5 cases per day
+                print(f"ML model skipped: target mean too low ({y_train_check.mean():.2f})")
+                return None
+            
             feature_cols = [c for c in train_features.columns if c not in ['date', 'neighborhood', y_col]]
             X_train = train_features[feature_cols].fillna(0)
             y_train = train_features[y_col].fillna(0).astype(float)
@@ -689,12 +716,13 @@ class FixedSF311Pipeline:
             t = np.arange(len(X_train), dtype=float)
             sample_weights = 0.3 + 0.7 * (t / max(t.max(), 1))  # oldest ~0.3, newest 1.0
             
-            # Main point model
+            # Main point model - use squared_error loss instead of poisson for better handling of sparse data
             model = HistGradientBoostingRegressor(
-                loss="poisson",
-                max_iter=300,
-                learning_rate=0.05,
-                random_state=42
+                loss="squared_error",
+                max_iter=200,
+                learning_rate=0.1,
+                random_state=42,
+                min_samples_leaf=5  # Prevent overfitting to sparse data
             )
             model.fit(X_train, y_train, sample_weight=sample_weights)
             
