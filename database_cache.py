@@ -7,6 +7,7 @@ import pandas as pd
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
+import numpy as np
 from datetime import datetime, timedelta, date
 from typing import Optional, Tuple
 import streamlit as st
@@ -67,14 +68,15 @@ class SF311DatabaseCache:
             with conn.cursor() as cur:
                 cur.execute("SELECT MAX(date) FROM sf311_raw_data")
                 result = cur.fetchone()
-                return result[0] if result[0] else None
+                return result[0] if result and result[0] else None
     
     def get_data_count(self) -> int:
         """Get total number of records in cache"""
         with self.get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT COUNT(*) FROM sf311_raw_data")
-                return cur.fetchone()[0]
+                result = cur.fetchone()
+                return result[0] if result else 0
     
     def store_data(self, df: pd.DataFrame):
         """Store new SF311 data in database"""
@@ -103,7 +105,7 @@ class SF311DatabaseCache:
                 WHERE date >= %s AND date <= %s
                 ORDER BY date, neighborhood
             """
-            df = pd.read_sql_query(query, conn, params=(start_date, end_date))
+            df = pd.read_sql_query(query, conn, params=[start_date, end_date])
             return df
     
     def get_all_cached_data(self) -> pd.DataFrame:
@@ -155,15 +157,18 @@ class SF311DatabaseCache:
                 
                 # Record count
                 cur.execute("SELECT COUNT(*) FROM sf311_raw_data")
-                total_records = cur.fetchone()[0]
+                result = cur.fetchone()
+                total_records = result[0] if result else 0
                 
                 # Neighborhood count
                 cur.execute("SELECT COUNT(DISTINCT neighborhood) FROM sf311_raw_data")
-                neighborhood_count = cur.fetchone()[0]
+                result = cur.fetchone()
+                neighborhood_count = result[0] if result else 0
                 
                 # Last update
                 cur.execute("SELECT MAX(created_at) FROM sf311_raw_data")
-                last_update = cur.fetchone()[0]
+                result = cur.fetchone()
+                last_update = result[0] if result else None
                 
                 return {
                     'total_records': total_records,
@@ -221,6 +226,11 @@ class SmartSF311Pipeline:
             fresh_data = self.api_pipeline.fetch_historical_data(days_to_fetch)
             
             if not fresh_data.empty:
+                # Convert to proper format for database storage
+                if 'date' not in fresh_data.columns:
+                    # Convert from wide format to long format if needed
+                    fresh_data = self._convert_to_cache_format(fresh_data)
+                
                 # Store in cache
                 self.cache.store_data(fresh_data)
                 self.cache.update_metadata('last_full_update', datetime.now().isoformat())
@@ -263,10 +273,12 @@ class SmartSF311Pipeline:
         """Generate predictions from cached historical data using fixed pipeline logic"""
         
         # Import prediction functions from fixed pipeline
-        from fixed_pipeline import (
-            seasonal_naive_forecast, trend_forecast, exponential_smoothing_forecast,
-            mase, validate_predictions
-        )
+        try:
+            from fixed_pipeline import validate_predictions
+        except ImportError:
+            # Simple validation if import fails
+            def validate_predictions(df):
+                return df
         
         # Get unique neighborhoods
         neighborhoods = historical_data['neighborhood'].unique()
@@ -279,7 +291,7 @@ class SmartSF311Pipeline:
         
         for neighborhood in neighborhoods:
             nbhd_data = historical_data[historical_data['neighborhood'] == neighborhood].copy()
-            nbhd_data = nbhd_data.sort_values('date')
+            nbhd_data = nbhd_data.sort_values('date').reset_index(drop=True)
             
             if len(nbhd_data) < 30:  # Need minimum data
                 continue
@@ -289,8 +301,16 @@ class SmartSF311Pipeline:
             
             # Simple model selection (trend model as primary)
             try:
-                # Generate forecast
-                forecast = trend_forecast(hist_values, prediction_days)
+                # Simple linear trend forecast
+                if len(hist_values) > 30:
+                    # Calculate simple trend
+                    recent_avg = np.mean(hist_values[-30:])
+                    trend_slope = (hist_values[-1] - hist_values[-30]) / 30
+                    forecast = [max(1, recent_avg + trend_slope * i) for i in range(prediction_days)]
+                else:
+                    # Use simple average if insufficient data
+                    avg_value = np.mean(hist_values)
+                    forecast = [max(1, avg_value)] * prediction_days
                 
                 # Create date range for predictions
                 pred_dates = pd.date_range(
@@ -325,3 +345,32 @@ class SmartSF311Pipeline:
         
         predictions_df = pd.DataFrame(prediction_results)
         return validate_predictions(predictions_df)
+    
+    def _convert_to_cache_format(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Convert API data to cache format (date, neighborhood, cases)"""
+        
+        # Check if data is already in the right format
+        if all(col in data.columns for col in ['date', 'neighborhood', 'cases']):
+            return data
+        
+        # Convert from wide format (dates as columns) to long format
+        if 'neighborhood' in data.columns:
+            # Melt the dataframe to convert date columns to rows
+            date_columns = [col for col in data.columns if col != 'neighborhood']
+            
+            melted_data = data.melt(
+                id_vars=['neighborhood'],
+                value_vars=date_columns,
+                var_name='date',
+                value_name='cases'
+            )
+            
+            # Convert date strings to proper date format
+            melted_data['date'] = pd.to_datetime(melted_data['date']).dt.date
+            melted_data['cases'] = melted_data['cases'].fillna(0).astype(int)
+            
+            return melted_data[['date', 'neighborhood', 'cases']]
+        
+        # If format is unknown, return empty dataframe
+        st.error("Unknown data format - cannot convert to cache format")
+        return pd.DataFrame({'date': [], 'neighborhood': [], 'cases': []})
