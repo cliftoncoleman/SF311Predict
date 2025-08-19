@@ -681,7 +681,7 @@ class FixedSF311Pipeline:
             if train_features.empty or len(train_features) < 28:
                 return None
             
-            feature_cols = [c for c in train_features.columns if c not in ['date', y_col]]
+            feature_cols = [c for c in train_features.columns if c not in ['date', 'neighborhood', y_col]]
             X_train = train_features[feature_cols].fillna(0)
             y_train = train_features[y_col].fillna(0).astype(float)
             
