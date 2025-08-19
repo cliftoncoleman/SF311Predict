@@ -115,9 +115,9 @@ def load_working_data():
             
             if not predictions.empty:
                 st.session_state.working_data = predictions
-                # Use specific default neighborhoods in priority order
+                # Use specific default neighborhoods in priority order (exact case match)
                 priority_neighborhoods = [
-                    "South of Market", "Tenderloin", "Hayes Valley", 
+                    "South Of Market", "Tenderloin", "Hayes Valley", 
                     "Mission", "Bayview Hunters Point"
                 ]
                 
@@ -138,15 +138,7 @@ def load_working_data():
                 st.session_state.working_neighborhoods = ordered_neighborhoods
                 st.session_state.last_working_refresh = datetime.now()
                 
-                # Debug: Print neighborhood names to help identify missing ones
-                print(f"*** AVAILABLE NEIGHBORHOODS ({len(st.session_state.working_neighborhoods)}) ***")
-                for i, n in enumerate(st.session_state.working_neighborhoods):
-                    print(f"{i+1:2d}. '{n}'")
-                
-                # Check for South of Market variations
-                soma_variations = [n for n in available_neighborhoods 
-                                 if 'south' in n.lower() or 'soma' in n.lower() or 'market' in n.lower()]
-                print(f"*** SOUTH OF MARKET VARIATIONS: {soma_variations} ***")
+
                 
                 # Save predictions
                 try:
@@ -299,9 +291,9 @@ def main():
             if st.session_state.get('selected_all_neighborhoods', False):
                 default_selection = st.session_state.working_neighborhoods
             elif st.session_state.get('selected_priority_neighborhoods', False):
-                # Use exact priority neighborhoods
+                # Use exact priority neighborhoods (exact case match)
                 priority_neighborhoods = [
-                    "South of Market", "Tenderloin", "Hayes Valley", 
+                    "South Of Market", "Tenderloin", "Hayes Valley", 
                     "Mission", "Bayview Hunters Point"
                 ]
                 # Filter to only include neighborhoods that exist in the data
@@ -311,9 +303,9 @@ def main():
                 if not default_selection:
                     default_selection = available_neighborhoods[:5]
             else:
-                # Default startup selection (priority neighborhoods)
+                # Default startup selection (priority neighborhoods, exact case match)
                 priority_neighborhoods = [
-                    "South of Market", "Tenderloin", "Hayes Valley", 
+                    "South Of Market", "Tenderloin", "Hayes Valley", 
                     "Mission", "Bayview Hunters Point"
                 ]
                 available_neighborhoods = st.session_state.working_neighborhoods
@@ -325,7 +317,7 @@ def main():
                 "Select neighborhoods:",
                 options=st.session_state.working_neighborhoods,
                 default=default_selection,
-                help="Priority selection: South of Market, Tenderloin, Hayes Valley, Mission, Bayview Hunters Point"
+                help="Priority selection: South Of Market, Tenderloin, Hayes Valley, Mission, Bayview Hunters Point"
             )
             
 
