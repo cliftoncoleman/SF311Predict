@@ -8,6 +8,7 @@ import numpy as np
 import datetime as dt
 import time
 import json
+import os
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any, Tuple
 import requests
@@ -93,7 +94,9 @@ class EnhancedSF311Pipeline:
         # SF311 API configuration
         self.base_url = "https://data.sfgov.org/resource/vw6y-z8j6.json"
         self.meta_url = "https://data.sfgov.org/api/views/vw6y-z8j6?content=metadata"
-        self.app_token = "TuXFZRAF7T8dnb1Rqk5VOdOKN"
+        self.app_token = os.getenv("SF311_APP_TOKEN")
+        if not self.app_token:
+            raise ValueError("SF311_APP_TOKEN environment variable is required")
         
         # Configuration
         self.time_field = "requested_datetime"
