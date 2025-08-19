@@ -46,13 +46,24 @@ class DataProcessor:
             return data
     
     def _aggregate_weekly(self, data: pd.DataFrame) -> pd.DataFrame:
-        """Aggregate data by week with proper confidence interval calculation"""
+        """Aggregate data by week with proper confidence interval calculation - only complete weeks"""
         try:
             data_copy = data.copy()
-            data_copy['week'] = data_copy['date'].dt.to_period('W').dt.start_time
             
-            # Group and aggregate predictions
-            grouped = data_copy.groupby(['week', 'neighborhood'])
+            # Create ISO week starting on Monday
+            data_copy['week_start'] = data_copy['date'].dt.to_period('W-MON').dt.start_time
+            
+            # Count days per week per neighborhood to filter out partial weeks
+            day_counts = data_copy.groupby(['week_start', 'neighborhood']).size().reset_index(name='day_count')
+            
+            # Only keep weeks with 7 complete days
+            complete_weeks = day_counts[day_counts['day_count'] == 7][['week_start', 'neighborhood']]
+            
+            # Filter original data to only include complete weeks
+            data_filtered = data_copy.merge(complete_weeks, on=['week_start', 'neighborhood'], how='inner')
+            
+            # Group and aggregate predictions for complete weeks only
+            grouped = data_filtered.groupby(['week_start', 'neighborhood'])
             
             # Sum the predicted requests
             predicted_sums = grouped['predicted_requests'].sum()
@@ -65,7 +76,7 @@ class DataProcessor:
             
             # Create final aggregated dataframe
             aggregated = pd.DataFrame({
-                'date': predicted_sums.index.get_level_values('week'),
+                'date': predicted_sums.index.get_level_values('week_start'),
                 'neighborhood': predicted_sums.index.get_level_values('neighborhood'),
                 'predicted_requests': predicted_sums.values,
                 'confidence_lower': predicted_sums.values - lower_diffs.values,
