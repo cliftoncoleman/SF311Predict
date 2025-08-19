@@ -209,10 +209,9 @@ class SmartSF311Pipeline:
         if min_d > target_start:
             return True, target_start, min_d - timedelta(days=1)
 
-        # Recent gap? pull from a small lookback to today
-        recent_start = max(max_d - timedelta(days=self.REVISION_BACKFILL_DAYS), target_start)
+        # Recent gap? pull from after max_d to today
         if max_d < today:
-            return True, recent_start, today
+            return True, max_d + timedelta(days=1), today
 
         return False, None, None
     
@@ -291,6 +290,8 @@ class SmartSF311Pipeline:
         # Always read back exactly the 5-year window for the app
         target_start = date.today() - timedelta(days=target_days)
         cached_data = self.cache.get_cached_data(target_start, date.today())
+        
+        st.info(f"📊 Requested {target_days} days ({target_start} → {date.today()}), got {len(cached_data)} records")
 
         if cached_data.empty:
             st.error("❌ No cached data available")
@@ -345,8 +346,8 @@ class SmartSF311Pipeline:
             end_of_year = date(today.year, 12, 31)
             prediction_days = (end_of_year - today).days + 1
             
-            # Use the API pipeline's sophisticated generate_predictions method directly
-            predictions = self.api_pipeline.generate_predictions(temp_data, prediction_days=prediction_days)
+            # Use the API pipeline's sophisticated generate_fixed_predictions method directly
+            predictions = self.api_pipeline.generate_fixed_predictions(temp_data, prediction_days=prediction_days)
             
             st.success(f"✅ Generated {len(predictions)} predictions using sophisticated models")
             return predictions
