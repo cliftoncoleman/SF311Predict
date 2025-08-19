@@ -101,34 +101,50 @@ def create_simple_bar_chart(data: pd.DataFrame) -> go.Figure:
 def load_working_data():
     """Load data using the working pipeline with smart caching"""
     try:
-        with st.spinner("Loading SF311 data with 5-year training pipeline..."):
-            # Smart session-based caching for better performance
-            cache_key = f"sf311_data_{datetime.now().strftime('%Y%m%d_%H')}"  # Hourly cache key
+        # Smart session-based caching for better performance
+        cache_key = f"sf311_data_{datetime.now().strftime('%Y%m%d_%H')}"  # Hourly cache key
+        
+        # Check if we have recent cached data
+        if (hasattr(st.session_state, cache_key) and 
+            hasattr(st.session_state, 'last_working_refresh') and 
+            st.session_state.last_working_refresh):
             
-            # Check if we have recent cached data
-            if (hasattr(st.session_state, cache_key) and 
-                hasattr(st.session_state, 'last_working_refresh') and 
-                st.session_state.last_working_refresh):
-                
-                time_since_last = datetime.now() - st.session_state.last_working_refresh
-                if time_since_last < timedelta(hours=1):
-                    st.info("Using cached data for faster loading...")
-                    st.session_state.working_data = getattr(st.session_state, cache_key)
-                    st.session_state.working_neighborhoods = sorted(st.session_state.working_data['neighborhood'].unique())
-                    st.success(f"Data loaded from cache! {len(st.session_state.working_data)} records from {len(st.session_state.working_neighborhoods)} neighborhoods")
-                    return
-            
-            st.info("Fetching fresh data...")
+            time_since_last = datetime.now() - st.session_state.last_working_refresh
+            if time_since_last < timedelta(hours=1):
+                st.info("Using cached data for faster loading...")
+                st.session_state.working_data = getattr(st.session_state, cache_key)
+                st.session_state.working_neighborhoods = sorted(st.session_state.working_data['neighborhood'].unique())
+                st.success(f"Data loaded from cache! {len(st.session_state.working_data)} records from {len(st.session_state.working_neighborhoods)} neighborhoods")
+                return
+        
+        # Create a compact status container for live updates
+        status_container = st.container()
+        with status_container:
+            status_box = st.empty()
+            status_box.info("🔄 **Loading Status:** Initializing SF311 pipeline with 5-year training data...")
+        
+        with st.spinner("Processing data..."):
             fresh_pipeline = FixedSF311Pipeline()
             
-            # Explicitly verify the days_back parameter
-            st.info("Loading 1825 days (5 years) of historical data for training...")
+            # Update status during processing
+            status_box.info("🔄 **Loading Status:** Fetching 5 years of historical data from SF311 API...")
+            
+            # Start prediction process
+            status_box.info("🔄 **Loading Status:** Training models for 42+ neighborhoods (this may take a moment)...")
+            
+            # Add a small expandable section for technical details
+            with st.expander("📊 See Technical Details", expanded=False):
+                tech_info = st.empty()
+                tech_info.text("Model training in progress:\n• Using 1825 days (5 years) of historical data\n• Selecting best model per neighborhood (trend/exponential/seasonal)\n• Generating predictions through end of year")
             
             # Use 5 years of training data for robust modeling
             predictions = fresh_pipeline.run_full_fixed_pipeline(
                 days_back=1825,  # 5 years for robust training  
                 prediction_days=None  # Full year forecast (restored)
             )
+            
+            # Update status when processing is complete
+            status_box.success("✅ **Loading Complete:** Data processed successfully!")
             
             if not predictions.empty:
                 st.session_state.working_data = predictions
@@ -160,7 +176,8 @@ def load_working_data():
                 st.session_state.working_neighborhoods = ordered_neighborhoods
                 st.session_state.last_working_refresh = datetime.now()
                 
-
+                # Update final status with results
+                status_box.success(f"✅ **Complete:** Loaded {len(predictions)} predictions from {len(available_neighborhoods)} neighborhoods!")
                 
                 # Save predictions
                 try:
