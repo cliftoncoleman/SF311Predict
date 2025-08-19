@@ -319,30 +319,183 @@ class GeospatialMapComponent:
         
         return m
     
-    def render_map_component(self, data: pd.DataFrame, title: str = "SF311 Predictions Heatmap"):
-        """Render the geospatial map component in Streamlit"""
+    def create_daily_heatmap(self, data: pd.DataFrame, selected_date: str, title: str = "SF311 Daily Predictions Heatmap") -> folium.Map:
+        """Create a heatmap for a specific day with neighborhood details on markers"""
         
-        st.subheader("🗺️ Geospatial Heatmap - All Neighborhoods")
+        # Filter data for the selected date
+        data['date'] = pd.to_datetime(data['date'])
+        selected_datetime = pd.to_datetime(selected_date)
+        daily_data = data[data['date'].dt.date == selected_datetime.date()]
+        
+        # Create base map centered on SF with dark tiles
+        m = folium.Map(
+            location=self.sf_center,
+            zoom_start=12,
+            tiles='CartoDB dark_matter'
+        )
+        
+        if daily_data.empty:
+            folium.Marker(
+                self.sf_center,
+                popup=f"No prediction data available for {selected_date}",
+                icon=folium.Icon(color='orange')
+            ).add_to(m)
+            return m
+        
+        # Generate heat points for this specific day
+        heat_points = self._generate_heat_points(daily_data)
+        
+        if heat_points:
+            # Add heatmap layer
+            HeatMap(
+                heat_points,
+                min_opacity=0.2,
+                max_zoom=18,
+                radius=25,
+                blur=15,
+                gradient={
+                    0.0: 'blue',
+                    0.2: 'cyan', 
+                    0.4: 'lime',
+                    0.6: 'yellow',
+                    0.8: 'orange',
+                    1.0: 'red'
+                }
+            ).add_to(m)
+        
+        # Add neighborhood markers with prediction totals and names
+        neighborhood_totals = daily_data.groupby('neighborhood')['predicted_requests'].sum()
+        neighborhood_centers = self._get_neighborhood_centers()
+        
+        for neighborhood, total_requests in neighborhood_totals.items():
+            center = neighborhood_centers.get(neighborhood)
+            if not center:
+                # Try mapping variations
+                mapped_name = self.neighborhood_mapping.get(neighborhood)
+                center = neighborhood_centers.get(mapped_name) if mapped_name else None
+            
+            if center and total_requests > 0:
+                # Determine marker color based on prediction volume
+                values = list(neighborhood_totals.values())
+                if total_requests > np.percentile(values, 75):
+                    color = 'red'
+                elif total_requests > np.percentile(values, 50):
+                    color = 'orange'
+                elif total_requests > np.percentile(values, 25):
+                    color = 'green'
+                else:
+                    color = 'blue'
+                
+                # Create marker with neighborhood name and number
+                folium.CircleMarker(
+                    location=center,
+                    radius=12,
+                    popup=f"""
+                    <b>{neighborhood}</b><br>
+                    Date: {selected_date}<br>
+                    Predicted Requests: {total_requests:,.1f}<br>
+                    Rank: {sorted(values, reverse=True).index(total_requests) + 1} of {len(values)}
+                    """,
+                    color='white',
+                    weight=2,
+                    fillColor=color,
+                    fillOpacity=0.8
+                ).add_to(m)
+                
+                # Add text label with neighborhood name and number
+                folium.Marker(
+                    location=center,
+                    icon=folium.DivIcon(
+                        html=f"""
+                        <div style="
+                            font-size: 10px; 
+                            color: white; 
+                            font-weight: bold; 
+                            text-align: center;
+                            text-shadow: 1px 1px 1px black;
+                            white-space: nowrap;
+                        ">
+                            {neighborhood}<br>
+                            {total_requests:,.0f}
+                        </div>
+                        """,
+                        icon_size=(80, 20),
+                        icon_anchor=(40, 10)
+                    )
+                ).add_to(m)
+        
+        # Add legend
+        legend_html = f'''
+        <div style="position: fixed; 
+                    bottom: 50px; left: 50px; width: 250px; height: 160px; 
+                    background-color: white; border:2px solid grey; z-index:9999; 
+                    font-size:12px; padding: 10px">
+        <p><b>{title}</b></p>
+        <p><b>Date: {selected_date}</b></p>
+        <p><span style="color:red">●</span> Heat shows prediction density</p>
+        <p><span style="color:red">●</span> Top 25% neighborhoods</p>
+        <p><span style="color:orange">●</span> 50-75% neighborhoods</p>
+        <p><span style="color:green">●</span> 25-50% neighborhoods</p>
+        <p><span style="color:blue">●</span> Bottom 25% neighborhoods</p>
+        </div>
+        '''
+        m.get_root().html.add_child(folium.Element(legend_html))
+        
+        return m
+
+    def render_map_component(self, data: pd.DataFrame, title: str = "SF311 Predictions Heatmap"):
+        """Render the geospatial map component in Streamlit with day selector"""
+        
+        st.subheader("🗺️ Daily Geospatial Heatmap - All Neighborhoods")
         
         if data.empty:
             st.warning("No data available for mapping")
             return
         
-        # Show data summary
-        total_predictions = data['predicted_requests'].sum()
-        total_neighborhoods = data['neighborhood'].nunique()
+        # Prepare date data
+        data['date'] = pd.to_datetime(data['date'])
+        available_dates = sorted(data['date'].dt.date.unique())
         
-        col1, col2, col3 = st.columns(3)
+        if not available_dates:
+            st.warning("No valid dates found in data")
+            return
+        
+        # Day selector
+        col1, col2 = st.columns([2, 1])
         with col1:
-            st.metric("Total Predictions", f"{total_predictions:,.0f}")
-        with col2:
-            st.metric("Neighborhoods", total_neighborhoods)
-        with col3:
-            st.metric("Avg per Neighborhood", f"{total_predictions / total_neighborhoods:,.0f}")
+            selected_date = st.selectbox(
+                "Select Date:",
+                options=available_dates,
+                index=0,
+                format_func=lambda x: x.strftime("%Y-%m-%d (%A)")
+            )
         
-        # Create and display map
-        with st.spinner("Loading neighborhood boundaries and creating heatmap..."):
-            heatmap = self.create_geospatial_heatmap(data, title)
+        with col2:
+            # Quick date navigation
+            if st.button("Next Day ▶"):
+                current_idx = available_dates.index(selected_date)
+                if current_idx < len(available_dates) - 1:
+                    selected_date = available_dates[current_idx + 1]
+                    st.rerun()
+        
+        # Show daily summary
+        daily_data = data[data['date'].dt.date == selected_date]
+        if not daily_data.empty:
+            total_predictions = daily_data['predicted_requests'].sum()
+            total_neighborhoods = daily_data['neighborhood'].nunique()
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Daily Total", f"{total_predictions:,.1f}")
+            with col2:
+                st.metric("Active Neighborhoods", total_neighborhoods)
+            with col3:
+                avg_per_neighborhood = total_predictions / total_neighborhoods if total_neighborhoods > 0 else 0
+                st.metric("Avg per Neighborhood", f"{avg_per_neighborhood:,.1f}")
+        
+        # Create and display daily heatmap
+        with st.spinner(f"Creating heatmap for {selected_date}..."):
+            heatmap = self.create_daily_heatmap(data, str(selected_date), f"SF311 Predictions - {selected_date}")
             
             # Display map using streamlit-folium
             map_data = st_folium(
@@ -354,6 +507,32 @@ class GeospatialMapComponent:
             
             # Show clicked neighborhood info
             if map_data['last_object_clicked']:
-                clicked_data = map_data['last_object_clicked']
-                if 'tooltip' in clicked_data:
-                    st.info(f"Selected: {clicked_data['tooltip']}")
+                clicked_lat = map_data['last_object_clicked']['lat']
+                clicked_lng = map_data['last_object_clicked']['lng']
+                
+                # Find closest neighborhood
+                neighborhood_centers = self._get_neighborhood_centers()
+                min_distance = float('inf')
+                closest_neighborhood = None
+                
+                for neighborhood, (lat, lng) in neighborhood_centers.items():
+                    distance = ((clicked_lat - lat)**2 + (clicked_lng - lng)**2)**0.5
+                    if distance < min_distance:
+                        min_distance = distance
+                        closest_neighborhood = neighborhood
+                
+                if closest_neighborhood and min_distance < 0.01:  # Within reasonable distance
+                    neighborhood_data = daily_data[daily_data['neighborhood'] == closest_neighborhood]
+                    if not neighborhood_data.empty:
+                        prediction = neighborhood_data['predicted_requests'].sum()
+                        st.info(f"📍 **{closest_neighborhood}** - {selected_date}: {prediction:,.1f} predicted requests")
+        
+        # Show top neighborhoods for the day
+        if not daily_data.empty:
+            st.markdown("---")
+            st.subheader(f"Top Neighborhoods - {selected_date}")
+            
+            daily_summary = daily_data.groupby('neighborhood')['predicted_requests'].sum().sort_values(ascending=False).head(10)
+            
+            for i, (neighborhood, requests) in enumerate(daily_summary.items(), 1):
+                st.write(f"{i}. **{neighborhood}**: {requests:,.1f} requests")
