@@ -377,14 +377,25 @@ class GeospatialMapComponent:
             if center and total_requests > 0:
                 # Determine marker color based on prediction volume
                 values = list(neighborhood_totals.values())
-                if total_requests > np.percentile(values, 75):
-                    color = 'red'
-                elif total_requests > np.percentile(values, 50):
-                    color = 'orange'
-                elif total_requests > np.percentile(values, 25):
-                    color = 'green'
+                if len(values) > 1:
+                    try:
+                        values_array = np.array(values, dtype=float)
+                        p75 = np.percentile(values_array, 75)
+                        p50 = np.percentile(values_array, 50)
+                        p25 = np.percentile(values_array, 25)
+                        
+                        if total_requests > p75:
+                            color = 'red'
+                        elif total_requests > p50:
+                            color = 'orange'
+                        elif total_requests > p25:
+                            color = 'green'
+                        else:
+                            color = 'blue'
+                    except Exception:
+                        color = 'blue'  # Default color
                 else:
-                    color = 'blue'
+                    color = 'blue'  # Default for single value
                 
                 # Create marker with neighborhood name and number
                 folium.CircleMarker(
@@ -481,8 +492,8 @@ class GeospatialMapComponent:
         # Show daily summary
         daily_data = data[data['date'].dt.date == selected_date]
         if not daily_data.empty:
-            total_predictions = daily_data['predicted_requests'].sum()
-            total_neighborhoods = daily_data['neighborhood'].nunique()
+            total_predictions = float(daily_data['predicted_requests'].sum())
+            total_neighborhoods = int(daily_data['neighborhood'].nunique())
             
             col1, col2, col3 = st.columns(3)
             with col1:
@@ -532,7 +543,8 @@ class GeospatialMapComponent:
             st.markdown("---")
             st.subheader(f"Top Neighborhoods - {selected_date}")
             
-            daily_summary = daily_data.groupby('neighborhood')['predicted_requests'].sum().sort_values(ascending=False).head(10)
+            daily_summary = daily_data.groupby('neighborhood')['predicted_requests'].sum()
+            daily_summary = daily_summary.sort_values(ascending=False).head(10)
             
             for i, (neighborhood, requests) in enumerate(daily_summary.items(), 1):
                 st.write(f"{i}. **{neighborhood}**: {requests:,.1f} requests")
