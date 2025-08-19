@@ -289,10 +289,6 @@ def main():
         # Show data info if loaded
         if st.session_state.working_data is not None:
             data = st.session_state.working_data
-            st.subheader("Data Summary")
-            st.metric("Total Records", f"{len(data):,}")
-            st.metric("Neighborhoods", f"{data['neighborhood'].nunique()}")
-            st.metric("Prediction Days", f"{data['date'].nunique()}")
             
             # Date range filter
             st.subheader("Date Range")
