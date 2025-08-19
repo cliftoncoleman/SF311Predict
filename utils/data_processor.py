@@ -46,35 +46,36 @@ class DataProcessor:
             return data
     
     def _aggregate_weekly(self, data: pd.DataFrame) -> pd.DataFrame:
-        """Aggregate data by week, dropping partial weeks for cleaner patterns"""
+        """Aggregate data by week with proper confidence interval calculation"""
         try:
             data_copy = data.copy()
-            data_copy['date'] = pd.to_datetime(data_copy['date'])
+            data_copy['week'] = data_copy['date'].dt.to_period('W').dt.start_time
             
-            # Use Sunday-anchored weeks with proper grouping
-            g = pd.Grouper(key='date', freq='W-SUN', label='right', closed='right')
+            # Group and aggregate predictions
+            grouped = data_copy.groupby(['week', 'neighborhood'])
             
-            # Group by neighborhood and week, count days and sum requests
-            agg = (data_copy.groupby(['neighborhood', g])
-                   .agg(
-                       predicted_requests=('predicted_requests', 'sum'),
-                       confidence_lower=('confidence_lower', 'sum'),
-                       confidence_upper=('confidence_upper', 'sum'),
-                       days=('date', 'nunique')
-                   )
-                   .reset_index())
+            # Sum the predicted requests
+            predicted_sums = grouped['predicted_requests'].sum()
             
-            # Only keep complete weeks (7 days) for cleaner patterns
-            agg = agg[agg['days'] == 7].copy()
+            # For confidence intervals, use statistical combination
+            # Assuming independence, variance adds when summing random variables
+            # CI width ≈ (upper - lower), so we use root sum of squares for combining uncertainties
+            lower_diffs = grouped.apply(lambda x: ((x['predicted_requests'] - x['confidence_lower']) ** 2).sum() ** 0.5)
+            upper_diffs = grouped.apply(lambda x: ((x['confidence_upper'] - x['predicted_requests']) ** 2).sum() ** 0.5)
             
-            # Clean up the results
-            agg = agg.drop(columns='days')
-            agg = agg.rename(columns={'date': 'date'})
+            # Create final aggregated dataframe
+            aggregated = pd.DataFrame({
+                'date': predicted_sums.index.get_level_values('week'),
+                'neighborhood': predicted_sums.index.get_level_values('neighborhood'),
+                'predicted_requests': predicted_sums.values,
+                'confidence_lower': predicted_sums.values - lower_diffs.values,
+                'confidence_upper': predicted_sums.values + upper_diffs.values
+            })
             
             # Ensure confidence bounds are reasonable
-            agg['confidence_lower'] = agg['confidence_lower'].clip(lower=0)
+            aggregated['confidence_lower'] = aggregated['confidence_lower'].clip(lower=0)
             
-            return agg.sort_values(['date', 'neighborhood']).reset_index(drop=True)
+            return aggregated.sort_values(['date', 'neighborhood'])
             
         except Exception as e:
             print(f"Error in weekly aggregation: {str(e)}")

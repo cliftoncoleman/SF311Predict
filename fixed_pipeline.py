@@ -19,57 +19,19 @@ from neighborhood_coalescer import apply_neighborhood_coalescing
 
 
 def seasonal_naive_forecast(hist_values: np.ndarray, n_periods: int, season: int = 7) -> np.ndarray:
-    """
-    Robust seasonal naive forecast that handles sparse data (many zeros) properly
-    """
+    """Generate seasonal naive forecast by repeating last seasonal pattern"""
     if len(hist_values) < season:
-        fallback_val = max(hist_values[-1] if len(hist_values) > 0 else 1.0, 0.1)
-        return np.full(n_periods, fallback_val)
+        return np.full(n_periods, max(hist_values[-1] if len(hist_values) > 0 else 1.0, 0))
     
-    # For sparse data, look further back to find meaningful patterns
-    # Try different lookback windows to avoid all-zero patterns
-    max_lookback = min(len(hist_values), 12 * season)  # Up to 12 weeks back
-    
-    best_pattern = None
-    best_mean = 0
-    
-    # Try multiple lookback windows to find the best non-zero pattern
-    for lookback_weeks in [4, 8, 12]:
-        lookback_days = lookback_weeks * season
-        if lookback_days > len(hist_values):
-            continue
-            
-        recent_data = hist_values[-lookback_days:]
-        pattern = np.zeros(season)
-        
-        # Average by day-of-week across the lookback period
-        for i in range(season):
-            day_values = recent_data[i::season]
-            pattern[i] = np.mean(day_values) if len(day_values) > 0 else 0
-        
-        pattern_mean = np.mean(pattern)
-        
-        # Prefer patterns with higher means (more realistic for 311 data)
-        if pattern_mean > best_mean:
-            best_pattern = pattern.copy()
-            best_mean = pattern_mean
-    
-    # If we still have a very low pattern, use overall historical mean as fallback
-    if best_pattern is None or best_mean < 0.5:
-        historical_mean = np.mean(hist_values[hist_values > 0]) if np.any(hist_values > 0) else 1.0
-        # Create a simple weekly pattern with variation
-        base_pattern = np.array([1.2, 0.8, 0.9, 1.1, 0.9, 0.7, 1.0]) * historical_mean * 0.7
-        best_pattern = base_pattern
-    
-    # Repeat the pattern to cover forecast period
+    last_season = hist_values[-season:]
     n_full_cycles = n_periods // season
     remainder = n_periods % season
     
-    forecast = np.tile(best_pattern, n_full_cycles)
+    forecast = np.tile(last_season, n_full_cycles)
     if remainder > 0:
-        forecast = np.concatenate([forecast, best_pattern[:remainder]])
+        forecast = np.concatenate([forecast, last_season[:remainder]])
     
-    return np.maximum(forecast, 0.1)  # Ensure minimum positive values
+    return np.maximum(forecast, 0)
 
 
 def mase(y_true: np.ndarray, y_pred: np.ndarray, season: int = 7) -> float:
@@ -228,86 +190,17 @@ class FixedSF311Pipeline:
             return pd.DataFrame(empty_cols)
         return pd.concat(frames, ignore_index=True)
 
-    def fetch_range(self, start_date: dt.date, end_date: dt.date) -> pd.DataFrame:
-        """Fetch SF311 data for specific date range"""
-        # Debug logging
-        days_span = (end_date - start_date).days + 1
-        years = days_span / 365.25
-        print(f"*** FETCH_RANGE CALLED ***")
-        print(f"Fetching {days_span} days of data ({years:.1f} years)")
-        print(f"Date range: {start_date} to {end_date}")
-        
-        try:
-            fields = self.get_field_names()
-            nbhd_fields = self.get_available_neighborhood_fields(fields)
-            
-            # Fetch data with all available neighborhood fields
-            all_frames = []
-            for win_start, win_end in self.month_windows(start_date, end_date):
-                df_month = self.fetch_month(nbhd_fields, win_start, win_end)
-                if not df_month.empty:
-                    all_frames.append(df_month)
-            
-            if not all_frames:
-                return pd.DataFrame()
-                
-            raw = pd.concat(all_frames, ignore_index=True)
-            
-            # Process datetime
-            raw[self.time_field] = pd.to_datetime(raw[self.time_field], errors="coerce", utc=True)
-            raw["date"] = raw[self.time_field].dt.tz_convert("US/Pacific").dt.date
-            
-            # Apply neighborhood coalescing to standardize to analysis boundaries
-            try:
-                raw_with_coalesced, coalescing_diagnostics = apply_neighborhood_coalescing(raw, verbose=False)
-                
-                # Use coalesced neighborhood or fallback
-                if "neighborhood" in raw_with_coalesced.columns:
-                    raw["neighborhood"] = raw_with_coalesced["neighborhood"].fillna("Unknown").astype(str)
-                else:
-                    # Fallback to the first available neighborhood field
-                    primary_field = nbhd_fields[0]
-                    raw["neighborhood"] = raw[primary_field].fillna("Unknown").astype(str)
-                
-                # Log coalescing results if successful
-                if 'coverage_percent' in coalescing_diagnostics:
-                    print(f"Neighborhood coalescing: {coalescing_diagnostics['coverage_percent']:.1f}% coverage, "
-                          f"{coalescing_diagnostics['unique_neighborhoods']} unique neighborhoods")
-                
-            except Exception as e:
-                print(f"Warning: Neighborhood coalescing failed ({e}), using fallback")
-                # Fallback to primary field
-                primary_field = nbhd_fields[0]
-                raw["neighborhood"] = raw[primary_field].fillna("Unknown").astype(str)
-            
-            # Aggregate to daily counts  
-            daily_counts = raw.groupby(["date", "neighborhood"], as_index=False).size()
-            daily_counts.rename(columns={"size": "cases"}, inplace=True)
-            daily = daily_counts.sort_values(["date", "neighborhood"]).reset_index(drop=True)
-            
-            # Filter to exact date range requested
-            daily = daily[(daily['date'] >= start_date) & (daily['date'] <= end_date)]
-            
-            print(f"Loaded {len(daily)} records from {daily['date'].min()} to {daily['date'].max()}")
-            
-            # Debug: Check Mission neighborhood as indicator
-            mission_data = daily[daily['neighborhood'].str.contains('Mission', case=False, na=False)]
-            if not mission_data.empty:
-                print(f"Mission neighborhood: {len(mission_data)} records")
-            
-            return daily
-            
-        except Exception as e:
-            st.error(f"Error fetching SF311 range data: {str(e)}")
-            return pd.DataFrame()
-
     def fetch_historical_data(self, start_days: int = 1825) -> pd.DataFrame:  # 5 years default
         """Fetch historical SF311 data with enhanced neighborhood coalescing"""
         today = dt.date.today()
         start_date = today - dt.timedelta(days=start_days)
         
-        # Use the new range method for consistent behavior
-        return self.fetch_range(start_date, today)
+        # Debug logging to confirm 5-year data loading
+        years = start_days / 365.25
+        print(f"*** FETCH_HISTORICAL_DATA CALLED ***")
+        print(f"Fetching {start_days} days of historical data ({years:.1f} years)")
+        print(f"Date range: {start_date} to {today}")
+        print(f"*** This should be 1825 days (5 years) for training ***")
         
         try:
             fields = self.get_field_names()
@@ -702,13 +595,7 @@ class FixedSF311Pipeline:
             if train_features.empty or len(train_features) < 28:
                 return None
             
-            # Check if target values are reasonable (not all zeros/very low)
-            y_train_check = train_features['cases'].fillna(0).astype(float)
-            if y_train_check.mean() < 0.5:  # If average is less than 0.5 cases per day
-                print(f"ML model skipped: target mean too low ({y_train_check.mean():.2f})")
-                return None
-            
-            feature_cols = [c for c in train_features.columns if c not in ['date', 'neighborhood', y_col]]
+            feature_cols = [c for c in train_features.columns if c not in ['date', y_col]]
             X_train = train_features[feature_cols].fillna(0)
             y_train = train_features[y_col].fillna(0).astype(float)
             
@@ -716,13 +603,12 @@ class FixedSF311Pipeline:
             t = np.arange(len(X_train), dtype=float)
             sample_weights = 0.3 + 0.7 * (t / max(t.max(), 1))  # oldest ~0.3, newest 1.0
             
-            # Main point model - use squared_error loss instead of poisson for better handling of sparse data
+            # Main point model
             model = HistGradientBoostingRegressor(
-                loss="squared_error",
-                max_iter=200,
-                learning_rate=0.1,
-                random_state=42,
-                min_samples_leaf=5  # Prevent overfitting to sparse data
+                loss="poisson",
+                max_iter=300,
+                learning_rate=0.05,
+                random_state=42
             )
             model.fit(X_train, y_train, sample_weight=sample_weights)
             
@@ -870,22 +756,23 @@ class FixedSF311Pipeline:
             nbhd_data = historical_data[historical_data['neighborhood'] == neighborhood].copy()
             nbhd_data = nbhd_data.sort_values('date').reset_index(drop=True)
             
-            # DENSIFY FIRST – fill missing dates with 0 cases so the length reflects the true time span
-            nbhd_data = self._ensure_continuous_days(nbhd_data)
-            
-            # Sanity-log with the densified series
+            # Sanity-log that each neighborhood truly sees 5y
             min_date = nbhd_data['date'].min()
             max_date = nbhd_data['date'].max()
-            if hasattr(min_date, 'date'): 
+            # Handle both datetime and date objects
+            if hasattr(min_date, 'date'):
                 min_date = min_date.date()
-            if hasattr(max_date, 'date'): 
+            if hasattr(max_date, 'date'):
                 max_date = max_date.date()
-            print(f"[{neighborhood}] train span (densified): {min_date} → {max_date} | rows: {len(nbhd_data)}")
+            print(f"[{neighborhood}] train span: {min_date} → {max_date} | rows: {len(nbhd_data)}")
             
-            # Now length checks make sense
+            # Guardrails for small/volatile neighborhoods
             MIN_TRAIN_DAYS = 30
             if len(nbhd_data) < MIN_TRAIN_DAYS:
+                # Skip neighborhoods with insufficient data
                 continue
+            
+            nbhd_data = self._ensure_continuous_days(nbhd_data)
             
             if len(nbhd_data) < 60:
                 forecast = self._simple_neighborhood_forecast(neighborhood, nbhd_data, prediction_days)
@@ -925,12 +812,9 @@ class FixedSF311Pipeline:
             return self._generate_baseline_predictions(prediction_days)
     
     def _ensure_continuous_days(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Fill missing dates with 0 cases, capped to last 5 years"""
+        """Fill missing dates with 0 cases"""
         df['date'] = pd.to_datetime(df['date'])
-        # Cap the range to the last 5 years to prevent extreme spans
-        start = max(df['date'].min(), pd.Timestamp.today().normalize() - pd.Timedelta(days=1825))
-        end = df['date'].max()
-        date_range = pd.date_range(start=start, end=end, freq='D')
+        date_range = pd.date_range(start=df['date'].min(), end=df['date'].max(), freq='D')
         full_df = pd.DataFrame({'date': date_range})
         merged = full_df.merge(df, on='date', how='left')
         merged['cases'] = merged['cases'].fillna(0).astype(int)
