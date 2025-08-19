@@ -218,6 +218,8 @@ class SmartSF311Pipeline:
         
         needs_update, start_date, end_date = self.needs_update(target_days)
         
+        st.info(f"🔍 Cache check: needs_update={needs_update}, target_days={target_days}")
+        
         if needs_update and start_date and end_date:
             days_to_fetch = (end_date - start_date).days + 1
             st.info(f"📡 Fetching {days_to_fetch} days of new data ({start_date} to {end_date})...")
@@ -225,18 +227,31 @@ class SmartSF311Pipeline:
             # Fetch new data using existing pipeline
             fresh_data = self.api_pipeline.fetch_historical_data(days_to_fetch)
             
+            st.info(f"🔍 API returned {len(fresh_data)} records")
+            
             if not fresh_data.empty:
                 # Convert to proper format for database storage
                 if 'date' not in fresh_data.columns:
-                    # Convert from wide format to long format if needed
+                    st.info("🔄 Converting data format...")
                     fresh_data = self._convert_to_cache_format(fresh_data)
+                else:
+                    st.info("✅ Data already in correct format")
                 
                 # Store in cache
+                st.info(f"💾 Storing {len(fresh_data)} records in cache...")
                 self.cache.store_data(fresh_data)
+                
+                # Verify storage
+                count_after = self.cache.get_data_count()
+                st.info(f"📊 Cache now contains {count_after} total records")
+                
                 self.cache.update_metadata('last_full_update', datetime.now().isoformat())
-                st.success(f"✅ Cached {len(fresh_data)} new records")
+                st.success(f"✅ Successfully cached {len(fresh_data)} new records")
             else:
                 st.warning("⚠️ No new data retrieved from API")
+        
+        else:
+            st.info("✅ Cache is up to date - no new data needed!")
         
         # Get all data from cache
         target_start = date.today() - timedelta(days=target_days)
