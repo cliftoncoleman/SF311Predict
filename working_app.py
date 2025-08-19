@@ -220,23 +220,6 @@ def main():
     
     st.title("Enhanced SF311 Street & Sidewalk Cleaning Predictions")
     
-    with st.expander("About the Enhanced Pipeline", expanded=False):
-        st.markdown("""
-        **Enhanced Features Implemented:**
-        
-        ✓ **Robust Model Selection**: Automatic backtesting selects best model for each neighborhood
-        
-        ✓ **MASE Metrics**: More reliable accuracy measurement for sparse data
-        
-        ✓ **Optimized ML Models**: Configured for Replit environment with proper parameters
-        
-        ✓ **Enhanced Validation**: Guards against indexing issues and validates predictions
-        
-        ✓ **Multi-Format Output**: Saves as both CSV and JSON with metadata
-        
-        ✓ **Smart Error Handling**: Graceful fallbacks when models fail to converge
-        """)
-    
     st.markdown("---")
     
     # Sidebar controls

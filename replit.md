@@ -12,6 +12,7 @@ A sophisticated Streamlit dashboard for predicting San Francisco 311 Street and 
 ✓ **Priority Neighborhoods Fixed** - Corrected capitalization for "South Of Market" in priority selection
 ✓ **UI Simplification** - Removed chart type selector, defaulting to line charts for better time series visualization
 ✓ **Weekly Aggregation Fix** - Modified to allow partial first week but eliminate partial last week only
+✓ **Interface Cleanup** - Removed "About the Enhanced Pipeline" expandable section for cleaner UI
 
 ## Project Architecture
 
