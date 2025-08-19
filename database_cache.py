@@ -331,21 +331,47 @@ class SmartSF311Pipeline:
         return self._generate_predictions_from_cached_data(historical_data)
     
     def _generate_predictions_from_cached_data(self, historical_data: pd.DataFrame) -> pd.DataFrame:
-        """Generate predictions from cached historical data using fixed pipeline logic"""
+        """Generate predictions using the actual sophisticated models from FixedSF311Pipeline"""
         
-        # Import prediction functions from fixed pipeline
+        # Use the actual sophisticated prediction logic from FixedSF311Pipeline
+        st.info("🤖 Using robust ML models with backtesting and model selection...")
+        
         try:
-            from fixed_pipeline import validate_predictions
-        except ImportError:
-            # Simple validation if import fails
-            def validate_predictions(df):
-                return df
+            # Create a temporary pipeline to leverage the sophisticated prediction methods
+            temp_data = historical_data.copy()
+            
+            # Get prediction period (rest of current year) 
+            today = date.today()
+            end_of_year = date(today.year, 12, 31)
+            prediction_days = (end_of_year - today).days + 1
+            
+            # Use the API pipeline's sophisticated generate_predictions method
+            predictions = self.api_pipeline.generate_predictions(
+                temp_data,
+                prediction_days=prediction_days,
+                # Use sophisticated backtesting and model selection
+                use_backtesting=True,
+                # Priority neighborhoods for focused predictions
+                priority_neighborhoods=["South Of Market", "Tenderloin", "Hayes Valley", "Mission", "Bayview Hunters Point"]
+            )
+            
+            st.success(f"✅ Generated {len(predictions)} predictions using sophisticated models")
+            return predictions
+            
+        except Exception as e:
+            st.warning(f"Sophisticated models failed ({e}), falling back to manual prediction generation")
+            
+            # Fallback: manually implement key prediction logic from FixedSF311Pipeline
+            return self._fallback_generate_predictions(historical_data)
+    
+    def _fallback_generate_predictions(self, historical_data: pd.DataFrame) -> pd.DataFrame:
+        """Fallback prediction generation using core FixedSF311Pipeline logic"""
         
-        # Get unique neighborhoods
-        neighborhoods = historical_data['neighborhood'].unique()
+        from fixed_pipeline import validate_predictions, seasonal_naive_forecast
+        
+        neighborhoods = historical_data['neighborhood'].unique() 
         prediction_results = []
         
-        # Get prediction period (rest of current year)
         today = date.today()
         end_of_year = date(today.year, 12, 31)
         prediction_days = (end_of_year - today).days + 1
@@ -354,77 +380,32 @@ class SmartSF311Pipeline:
             nbhd_data = historical_data[historical_data['neighborhood'] == neighborhood].copy()
             nbhd_data = nbhd_data.sort_values('date').reset_index(drop=True)
             
-            if len(nbhd_data) < 30:  # Need minimum data
+            if len(nbhd_data) < 30:
                 continue
             
-            # Get time series
-            hist_values = nbhd_data['cases'].values
+            hist_values = nbhd_data['cases'].values.astype(float)
             
-            # Robust seasonal naive model (better for SF311 weekly patterns)
-            try:
-                # Use seasonal naive with weekly seasonality (much more stable)
-                if len(hist_values) >= 14:  # Need at least 2 weeks
-                    # Get the last 7 days pattern (weekly seasonality)
-                    last_week_pattern = hist_values[-7:]
-                    
-                    # Calculate a stable baseline using recent average (avoid outliers)
-                    recent_median = np.median(hist_values[-30:]) if len(hist_values) >= 30 else np.median(hist_values[-14:])
-                    
-                    # Apply gentle trend adjustment using median trend (more stable)
-                    if len(hist_values) >= 60:
-                        # Compare recent month vs. previous month medians
-                        recent_month = np.median(hist_values[-30:])
-                        prev_month = np.median(hist_values[-60:-30])
-                        trend_factor = max(0.8, min(1.2, recent_month / max(prev_month, 1)))  # Cap trend between 80%-120%
-                    else:
-                        trend_factor = 1.0
-                    
-                    # Generate forecast using weekly pattern with trend adjustment
-                    forecast = []
-                    for i in range(prediction_days):
-                        day_of_week_pattern = last_week_pattern[i % 7]
-                        # Apply trend factor gradually over time
-                        trend_adjustment = trend_factor ** (i / 30.0)  # Gradual trend application
-                        predicted_value = day_of_week_pattern * trend_adjustment
-                        
-                        # Ensure reasonable bounds (between 50% and 150% of recent median)
-                        min_val = max(1, recent_median * 0.5)
-                        max_val = recent_median * 1.5
-                        predicted_value = max(min_val, min(max_val, predicted_value))
-                        
-                        forecast.append(predicted_value)
-                else:
-                    # Fallback for insufficient data
-                    avg_value = np.mean(hist_values[-7:]) if len(hist_values) >= 7 else np.mean(hist_values)
-                    forecast = [max(1, avg_value)] * prediction_days
-                
-                # Create date range for predictions
-                pred_dates = pd.date_range(
-                    start=today,
-                    periods=prediction_days,
-                    freq='D'
-                )
-                
-                # Create prediction records
-                for i, pred_date in enumerate(pred_dates):
-                    predicted_value = max(1, int(forecast[i]))
-                    
-                    # Simple confidence intervals
-                    confidence_lower = max(0, int(predicted_value * 0.8))
-                    confidence_upper = int(predicted_value * 1.2)
-                    
-                    prediction_results.append({
-                        'date': pred_date.date(),
-                        'neighborhood': neighborhood,
-                        'predicted_requests': predicted_value,
-                        'confidence_lower': confidence_lower,
-                        'confidence_upper': confidence_upper,
-                        'model_used': 'trend'
-                    })
+            # Use the same seasonal naive logic from FixedSF311Pipeline
+            forecast = seasonal_naive_forecast(hist_values, prediction_days, season=7)
             
-            except Exception as e:
-                st.warning(f"Prediction failed for {neighborhood}: {e}")
-                continue
+            # Create prediction records
+            pred_dates = pd.date_range(start=today, periods=prediction_days, freq='D')
+            
+            for i, pred_date in enumerate(pred_dates):
+                predicted_value = max(1, int(forecast[i]))
+                
+                # Use similar confidence intervals as FixedSF311Pipeline
+                confidence_lower = max(0, int(predicted_value * 0.8))
+                confidence_upper = int(predicted_value * 1.2)
+                
+                prediction_results.append({
+                    'date': pred_date.date(),
+                    'neighborhood': neighborhood,
+                    'predicted_requests': predicted_value,
+                    'confidence_lower': confidence_lower,
+                    'confidence_upper': confidence_upper,
+                    'model_used': 'seasonal_naive'
+                })
         
         if not prediction_results:
             return pd.DataFrame()
