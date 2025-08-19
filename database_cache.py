@@ -181,120 +181,127 @@ class SF311DatabaseCache:
 class SmartSF311Pipeline:
     """SF311 Pipeline with intelligent database caching"""
     
+    REVISION_BACKFILL_DAYS = 14
+    CHUNK_DAYS = 90  # avoid massive single API calls
+    DATE_FMT = "%Y-%m-%d"
+    
     def __init__(self):
         from fixed_pipeline import FixedSF311Pipeline
         self.api_pipeline = FixedSF311Pipeline()
         self.cache = SF311DatabaseCache()
         self.cache.setup_tables()
     
-    def needs_update(self, target_days: int = 1825) -> Tuple[bool, Optional[date], Optional[date]]:
-        """Check if we need to fetch new data"""
+    def _compute_fetch_window(self, target_days: int):
         today = date.today()
         target_start = today - timedelta(days=target_days)
-        
-        # Check actual record count and date span
-        record_count = self.cache.get_data_count()
-        
-        # If we have very few records, do a full fetch
-        if record_count < 1000:  # Less than ~3 years of data
-            return True, target_start, today
-        
-        # Check if we have data spanning the full target range
+
+        # If cache empty → full backfill
         with self.cache.get_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT MIN(date), MAX(date), COUNT(*) FROM sf311_raw_data")
-                result = cur.fetchone()
-                if not result or not result[0] or not result[1]:
-                    return True, target_start, today
-                
-                earliest_cached, last_cached, total_records = result
-        
-        # Check if we have sufficient historical coverage
-        days_cached = (last_cached - earliest_cached).days
-        if days_cached < target_days * 0.9:  # Less than 90% coverage
-            return True, target_start, today
-        
-        # Check if earliest date is too recent (missing historical data)
-        if earliest_cached > target_start + timedelta(days=30):  # More than 30 days gap
-            return True, target_start, earliest_cached - timedelta(days=1)
-        
-        # Check if we're missing recent data
-        if last_cached < today - timedelta(days=2):
-            return True, last_cached + timedelta(days=1), today
-        
-        # Cache is complete
+                cur.execute("SELECT MIN(date), MAX(date) FROM sf311_raw_data")
+                row = cur.fetchone()
+                min_d, max_d = row if row else (None, None)
+
+        if not min_d or not max_d:
+            return True, target_start, today  # full bootstrap
+
+        # Oldest gap? backfill earlier section
+        if min_d > target_start:
+            return True, target_start, min_d - timedelta(days=1)
+
+        # Recent gap? pull from a small lookback to today
+        recent_start = max(max_d - timedelta(days=self.REVISION_BACKFILL_DAYS), target_start)
+        if max_d < today:
+            return True, recent_start, today
+
         return False, None, None
     
+    def needs_update(self, target_days: int = 1825):
+        # Keep a thin wrapper for compatibility; delegate to the new logic
+        return self._compute_fetch_window(target_days)
+    
+    def _fetch_range_from_api(self, start_d: date, end_d: date) -> pd.DataFrame:
+        """
+        Fetch an explicit date range. Prefer a range-aware method.
+        Fallback: if only "last N days" exists, we break the window into
+        chunks that end at 'cur_end' so the API returns the correct slice.
+        """
+        # Try a proper range method first
+        fetch_range = getattr(self.api_pipeline, "fetch_range", None)
+        if callable(fetch_range):
+            return fetch_range(start_d, end_d)
+
+        # Fallback path: fetch_historical_data(n) returns "last n days ending today"
+        fetch_hist = getattr(self.api_pipeline, "fetch_historical_data", None)
+        if not callable(fetch_hist):
+            return pd.DataFrame(columns=["date", "neighborhood", "cases"])
+
+        # If the function supports end_date kwarg, use it:
+        try:
+            n_days = (end_d - start_d).days + 1
+            return fetch_hist(n_days, end_date=end_d)
+        except TypeError:
+            # Last resort: this will fetch the most recent n_days ending *today*.
+            # It will NOT honor start/end. Keep this only as a temporary fallback.
+            n_days = (end_d - start_d).days + 1
+            df = fetch_hist(n_days)
+            # Filter locally to the intended window:
+            if not df.empty:
+                df["date"] = pd.to_datetime(df["date"]).dt.date
+                return df[(df["date"] >= start_d) & (df["date"] <= end_d)]
+            return df
+    
     def fetch_and_cache_data(self, target_days: int = 1825, force_refresh: bool = False) -> pd.DataFrame:
-        """Intelligently fetch and cache SF311 data"""
-        
         if force_refresh:
-            st.info("🔄 Force refresh requested - clearing cache...")
+            st.info("🔄 Force refresh requested - clearing cache…")
             self.cache.clear_cache()
-        
+
         needs_update, start_date, end_date = self.needs_update(target_days)
-        
         st.info(f"🔍 Cache check: needs_update={needs_update}, target_days={target_days}")
-        
+
         if needs_update and start_date and end_date:
-            days_to_fetch = (end_date - start_date).days + 1
-            st.info(f"📡 Fetching {days_to_fetch} days of new data ({start_date} to {end_date})...")
-            
-            # Fetch new data using existing pipeline
-            fresh_data = self.api_pipeline.fetch_historical_data(days_to_fetch)
-            
-            st.info(f"🔍 API returned {len(fresh_data)} records")
-            
-            if not fresh_data.empty:
-                # Convert to proper format for database storage
-                if 'date' not in fresh_data.columns:
-                    st.info("🔄 Converting data format...")
-                    fresh_data = self._convert_to_cache_format(fresh_data)
-                else:
-                    st.info("✅ Data already in correct format")
-                
-                # Store in cache
-                st.info(f"💾 Storing {len(fresh_data)} records in cache...")
-                
-                try:
-                    self.cache.store_data(fresh_data)
-                    # Verify storage immediately
-                    count_after = self.cache.get_data_count()
-                    st.info(f"📊 Cache now contains {count_after} total records")
-                    
-                    if count_after == 0:
-                        st.error("❌ Storage failed - cache is still empty!")
-                        # Try manual storage debug
-                        st.info("🔧 Debugging storage issue...")
-                        sample_data = fresh_data.head(5)
-                        st.write("Sample data to store:", sample_data)
-                        
-                except Exception as storage_error:
-                    st.error(f"❌ Cache storage failed: {storage_error}")
-                    st.info("📝 Will use data directly without caching")
-                
-                self.cache.update_metadata('last_full_update', datetime.now().isoformat())
-                st.success(f"✅ Successfully cached {len(fresh_data)} new records")
-            else:
-                st.warning("⚠️ No new data retrieved from API")
-        
+            total_days = (end_date - start_date).days + 1
+            st.info(f"📡 Fetching {total_days} days ({start_date} → {end_date}) in chunks of {self.CHUNK_DAYS}…")
+
+            cur_start = start_date
+            total_inserted = 0
+            while cur_start <= end_date:
+                cur_end = min(cur_start + timedelta(days=self.CHUNK_DAYS - 1), end_date)
+                fresh = self._fetch_range_from_api(cur_start, cur_end)
+
+                if not fresh.empty:
+                    # Normalize types
+                    fresh = fresh.copy()
+                    fresh["date"] = pd.to_datetime(fresh["date"]).dt.date
+                    if "cases" in fresh.columns:
+                        fresh["cases"] = fresh["cases"].fillna(0).astype(int)
+
+                    # Store
+                    self.cache.store_data(fresh)
+                    total_inserted += len(fresh)
+
+                st.info(f"  • Stored {len(fresh)} rows for {cur_start} → {cur_end}")
+                cur_start = cur_end + timedelta(days=1)
+
+            st.success(f"✅ Finished caching: +{total_inserted} rows")
+
         else:
-            st.info("✅ Cache is up to date - no new data needed!")
-        
-        # Get all data from cache
+            st.info("✅ Cache is up to date — no new data needed")
+
+        # Always read back exactly the 5-year window for the app
         target_start = date.today() - timedelta(days=target_days)
         cached_data = self.cache.get_cached_data(target_start, date.today())
-        
+
         if cached_data.empty:
             st.error("❌ No cached data available")
             return pd.DataFrame()
-        
-        # Show cache stats
+
         stats = self.cache.get_cache_stats()
-        st.success(f"🎯 Using cached data: {stats['total_records']:,} records, "
-                  f"{stats['neighborhood_count']} neighborhoods, "
-                  f"dates {stats['date_range'][0]} to {stats['date_range'][1]}")
-        
+        st.success(
+            f"🎯 Using cached data: {stats['total_records']:,} rows • "
+            f"{stats['neighborhood_count']} neighborhoods • "
+            f"range {stats['date_range'][0]} → {stats['date_range'][1]}"
+        )
         return cached_data
     
     def generate_predictions_with_cache(self, target_days: int = 1825, force_refresh: bool = False) -> pd.DataFrame:

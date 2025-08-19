@@ -1,0 +1,161 @@
+You’ve got two coupled issues:
+
+Your incremental logic requests a wide window, but
+
+fetch_historical_data(days_to_fetch) almost certainly returns “last N days from today” (or is internally clamped to ~2 days) — so on first run you only ever insert ~2 days, and on later runs you keep re-inserting just the newest couple of days.
+
+The fix is to make your fetch range-aware and then upsert everything. Below is a drop-in patch for your SmartSF311Pipeline that:
+
+Adds a revision backfill (14 days by default instead of 2)
+
+Fetches explicit date ranges in chunks (so you don’t depend on “last N days” semantics)
+
+Keeps your Postgres upsert logic unchanged
+
+Returns the entire cached five-year window to the app
+
+✅ Minimal patch (copy/paste)
+1) Add these constants and helpers to SmartSF311Pipeline
+
+Put them near the top of the class:
+
+REVISION_BACKFILL_DAYS = 14
+CHUNK_DAYS = 90  # avoid massive single API calls
+DATE_FMT = "%Y-%m-%d"
+
+def _compute_fetch_window(self, target_days: int):
+    today = date.today()
+    target_start = today - timedelta(days=target_days)
+
+    # If cache empty → full backfill
+    with self.cache.get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT MIN(date), MAX(date) FROM sf311_raw_data")
+            row = cur.fetchone()
+            min_d, max_d = row if row else (None, None)
+
+    if not min_d or not max_d:
+        return True, target_start, today  # full bootstrap
+
+    # Oldest gap? backfill earlier section
+    if min_d > target_start:
+        return True, target_start, min_d - timedelta(days=1)
+
+    # Recent gap? pull from a small lookback to today
+    recent_start = max(max_d - timedelta(days=REVISION_BACKFILL_DAYS), target_start)
+    if max_d < today:
+        return True, recent_start, today
+
+    return False, None, None
+
+2) Add a range-aware fetcher
+
+This calls into your existing FixedSF311Pipeline but prefers a method that accepts explicit dates. If your FixedSF311Pipeline doesn’t have fetch_range(start_date, end_date), add it there (or temporarily keep the fallback).
+
+def _fetch_range_from_api(self, start_d: date, end_d: date) -> pd.DataFrame:
+    """
+    Fetch an explicit date range. Prefer a range-aware method.
+    Fallback: if only "last N days" exists, we break the window into
+    chunks that end at 'cur_end' so the API returns the correct slice.
+    """
+    # Try a proper range method first
+    fetch_range = getattr(self.api_pipeline, "fetch_range", None)
+    if callable(fetch_range):
+        return fetch_range(start_d, end_d)
+
+    # Fallback path (update your FixedSF311Pipeline ASAP to support ranges):
+    # If fetch_historical_data(n) always returns "last n days ending today",
+    # we force it to end at cur_end by temporarily monkey-patching "today"
+    # or by calling a method that accepts an 'end_date' kwarg if present.
+    fetch_hist = getattr(self.api_pipeline, "fetch_historical_data", None)
+    if not callable(fetch_hist):
+        return pd.DataFrame(columns=["date", "neighborhood", "cases"])
+
+    # If the function supports end_date kwarg, use it:
+    try:
+        n_days = (end_d - start_d).days + 1
+        return fetch_hist(n_days, end_date=end_d)
+    except TypeError:
+        # Last resort: this will fetch the most recent n_days ending *today*.
+        # It will NOT honor start/end. Keep this only as a temporary fallback.
+        n_days = (end_d - start_d).days + 1
+        df = fetch_hist(n_days)
+        # If this fallback runs, you’ll still only get the newest window.
+        # Fix FixedSF311Pipeline to expose a true fetch_range asap.
+        # We at least filter locally to the intended window:
+        if not df.empty:
+            df["date"] = pd.to_datetime(df["date"]).dt.date
+            return df[(df["date"] >= start_d) & (df["date"] <= end_d)]
+        return df
+
+
+Action item for you: In FixedSF311Pipeline, add:
+
+def fetch_range(self, start_date: date, end_date: date) -> pd.DataFrame:
+    # Run your Socrata/ETL with WHERE requested_date BETWEEN start_date AND end_date
+    # Return long format: columns = ['date','neighborhood','cases'] with 'date' as date
+    ...
+
+
+That one change eliminates the “only 2 days” behavior.
+
+3) Replace your needs_update(...) and fetch_and_cache_data(...)
+
+Drop these in to overwrite your current versions (they use the helpers above):
+
+def needs_update(self, target_days: int = 1825):
+    # Keep a thin wrapper for compatibility; delegate to the new logic
+    return self._compute_fetch_window(target_days)
+
+def fetch_and_cache_data(self, target_days: int = 1825, force_refresh: bool = False) -> pd.DataFrame:
+    if force_refresh:
+        st.info("🔄 Force refresh requested - clearing cache…")
+        self.cache.clear_cache()
+
+    needs_update, start_date, end_date = self.needs_update(target_days)
+    st.info(f"🔍 Cache check: needs_update={needs_update}, target_days={target_days}")
+
+    if needs_update and start_date and end_date:
+        total_days = (end_date - start_date).days + 1
+        st.info(f"📡 Fetching {total_days} days ({start_date} → {end_date}) in chunks of {CHUNK_DAYS}…")
+
+        cur_start = start_date
+        total_inserted = 0
+        while cur_start <= end_date:
+            cur_end = min(cur_start + timedelta(days=CHUNK_DAYS - 1), end_date)
+            fresh = self._fetch_range_from_api(cur_start, cur_end)
+
+            if not fresh.empty:
+                # Normalize types
+                fresh = fresh.copy()
+                fresh["date"] = pd.to_datetime(fresh["date"]).dt.date
+                if "cases" in fresh.columns:
+                    fresh["cases"] = fresh["cases"].fillna(0).astype(int)
+
+                # Store
+                self.cache.store_data(fresh)
+                total_inserted += len(fresh)
+
+            st.info(f"  • Stored {len(fresh)} rows for {cur_start} → {cur_end}")
+            cur_start = cur_end + timedelta(days=1)
+
+        st.success(f"✅ Finished caching: +{total_inserted} rows")
+
+    else:
+        st.info("✅ Cache is up to date — no new data needed")
+
+    # Always read back exactly the 5-year window for the app
+    target_start = date.today() - timedelta(days=target_days)
+    cached_data = self.cache.get_cached_data(target_start, date.today())
+
+    if cached_data.empty:
+        st.error("❌ No cached data available")
+        return pd.DataFrame()
+
+    stats = self.cache.get_cache_stats()
+    st.success(
+        f"🎯 Using cached data: {stats['total_records']:,} rows • "
+        f"{stats['neighborhood_count']} neighborhoods • "
+        f"range {stats['date_range'][0]} → {stats['date_range'][1]}"
+    )
+    return cached_data
