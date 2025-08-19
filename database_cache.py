@@ -345,15 +345,8 @@ class SmartSF311Pipeline:
             end_of_year = date(today.year, 12, 31)
             prediction_days = (end_of_year - today).days + 1
             
-            # Use the API pipeline's sophisticated generate_predictions method
-            predictions = self.api_pipeline.generate_predictions(
-                temp_data,
-                prediction_days=prediction_days,
-                # Use sophisticated backtesting and model selection
-                use_backtesting=True,
-                # Priority neighborhoods for focused predictions
-                priority_neighborhoods=["South Of Market", "Tenderloin", "Hayes Valley", "Mission", "Bayview Hunters Point"]
-            )
+            # Use the API pipeline's sophisticated generate_predictions method directly
+            predictions = self.api_pipeline.generate_predictions(temp_data, prediction_days=prediction_days)
             
             st.success(f"✅ Generated {len(predictions)} predictions using sophisticated models")
             return predictions
@@ -365,53 +358,96 @@ class SmartSF311Pipeline:
             return self._fallback_generate_predictions(historical_data)
     
     def _fallback_generate_predictions(self, historical_data: pd.DataFrame) -> pd.DataFrame:
-        """Fallback prediction generation using core FixedSF311Pipeline logic"""
+        """Fallback prediction generation using the full FixedSF311Pipeline sophisticated models"""
         
-        from fixed_pipeline import validate_predictions, seasonal_naive_forecast
-        
-        neighborhoods = historical_data['neighborhood'].unique() 
-        prediction_results = []
-        
-        today = date.today()
-        end_of_year = date(today.year, 12, 31)
-        prediction_days = (end_of_year - today).days + 1
-        
-        for neighborhood in neighborhoods:
-            nbhd_data = historical_data[historical_data['neighborhood'] == neighborhood].copy()
-            nbhd_data = nbhd_data.sort_values('date').reset_index(drop=True)
+        try:
+            # Use the full sophisticated prediction pipeline including backtesting
+            st.info("🧠 Running full model selection: ML, exponential smoothing, trend, and seasonal models...")
             
-            if len(nbhd_data) < 30:
-                continue
+            today = date.today()
+            end_of_year = date(today.year, 12, 31)
+            prediction_days = (end_of_year - today).days + 1
             
-            hist_values = nbhd_data['cases'].values.astype(float)
+            # Get neighborhoods with sufficient data for sophisticated models
+            neighborhoods = historical_data['neighborhood'].unique()
+            all_forecasts = []
             
-            # Use the same seasonal naive logic from FixedSF311Pipeline
-            forecast = seasonal_naive_forecast(hist_values, prediction_days, season=7)
-            
-            # Create prediction records
-            pred_dates = pd.date_range(start=today, periods=prediction_days, freq='D')
-            
-            for i, pred_date in enumerate(pred_dates):
-                predicted_value = max(1, int(forecast[i]))
+            for neighborhood in neighborhoods:
+                nbhd_data = historical_data[historical_data['neighborhood'] == neighborhood].copy()
+                nbhd_data = nbhd_data.sort_values('date').reset_index(drop=True)
                 
-                # Use similar confidence intervals as FixedSF311Pipeline
-                confidence_lower = max(0, int(predicted_value * 0.8))
-                confidence_upper = int(predicted_value * 1.2)
+                if len(nbhd_data) < 100:  # Need substantial data for sophisticated models
+                    continue
                 
-                prediction_results.append({
-                    'date': pred_date.date(),
-                    'neighborhood': neighborhood,
-                    'predicted_requests': predicted_value,
-                    'confidence_lower': confidence_lower,
-                    'confidence_upper': confidence_upper,
-                    'model_used': 'seasonal_naive'
-                })
-        
-        if not prediction_results:
+                st.info(f"🔬 Training models for {neighborhood}...")
+                
+                # Split data for backtesting (use last 28 days for validation)
+                val_size = min(28, len(nbhd_data) // 4)
+                train_df = nbhd_data.iloc[:-val_size].copy()
+                val_df = nbhd_data.iloc[-val_size:].copy()
+                
+                # Train all model types using FixedSF311Pipeline methods
+                models = {}
+                
+                # 1. Trend model
+                trend_result = self.api_pipeline._train_trend_model(train_df, val_df, 'cases')
+                if trend_result:
+                    models['trend'] = trend_result
+                
+                # 2. Exponential smoothing
+                es_result = self.api_pipeline._train_exponential_smoothing(train_df, val_df, 'cases')
+                if es_result:
+                    models['exponential_smoothing'] = es_result
+                
+                # 3. ML model
+                ml_result = self.api_pipeline._train_ml_model(train_df, val_df, 'cases')
+                if ml_result:
+                    models['ml'] = ml_result
+                
+                # 4. Seasonal naive baseline
+                from fixed_pipeline import seasonal_naive_forecast, mase
+                hist_values = train_df['cases'].values.astype(float)
+                seasonal_forecast = seasonal_naive_forecast(hist_values, len(val_df), season=7)
+                y_val = val_df['cases'].values.astype(float)
+                seasonal_mase = mase(y_val, seasonal_forecast, season=7)
+                
+                models['seasonal_naive'] = {
+                    "model_type": "seasonal_naive",
+                    "model": None,
+                    "mase_score": seasonal_mase,
+                    "predictions": seasonal_forecast
+                }
+                
+                # Select best model based on MASE score
+                if models:
+                    best_model_name = min(models.keys(), key=lambda k: models[k].get('mase_score', float('inf')))
+                    best_model = models[best_model_name]
+                    
+                    st.info(f"✅ {neighborhood}: Selected {best_model_name} (MASE: {best_model['mase_score']:.3f})")
+                    
+                    # Generate forecast using the best model
+                    forecast_df = self.api_pipeline._generate_forecast_from_model(
+                        best_model, nbhd_data, neighborhood, prediction_days
+                    )
+                    
+                    if not forecast_df.empty:
+                        all_forecasts.append(forecast_df)
+                else:
+                    st.warning(f"⚠️ No models trained successfully for {neighborhood}")
+            
+            if all_forecasts:
+                final_forecast = pd.concat(all_forecasts, ignore_index=True)
+                from fixed_pipeline import validate_predictions
+                final_forecast = validate_predictions(final_forecast)
+                st.success(f"🎯 Generated sophisticated predictions for {len(final_forecast['neighborhood'].unique())} neighborhoods")
+                return final_forecast
+            else:
+                st.error("❌ No sophisticated models could be trained")
+                return pd.DataFrame()
+                
+        except Exception as e:
+            st.error(f"❌ Sophisticated models failed completely: {e}")
             return pd.DataFrame()
-        
-        predictions_df = pd.DataFrame(prediction_results)
-        return validate_predictions(predictions_df)
     
     def _convert_to_cache_format(self, data: pd.DataFrame) -> pd.DataFrame:
         """Convert API data to cache format (date, neighborhood, cases)"""
