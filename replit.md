@@ -3,16 +3,17 @@
 ## Project Overview
 A sophisticated Streamlit dashboard for predicting San Francisco 311 Street and Sidewalk Cleaning request trends using advanced machine learning techniques with neighborhood-level forecasting.
 
-## Recent Changes (August 18, 2025)
+## Recent Changes (August 19, 2025)
+✓ **PERFORMANCE OPTIMIZATION** - Implemented smart caching strategy to dramatically reduce loading times
+✓ **Day-by-Day Heatmap** - Enhanced geospatial visualization with date selector and neighborhood labels
+✓ **Smart Cache Strategy** - Data cached for 1 hour, field metadata cached for 24 hours
+✓ **Cache Controls** - Added manual cache management buttons for user control
+✓ **True Heatmap Visualization** - Implemented density-based heat visualization with color gradients
+✓ **Interactive Navigation** - Added "Next Day" button and click detection for neighborhood details
+✓ **Enhanced Markers** - Neighborhood names and prediction numbers displayed directly on map dots
 ✓ **FIXED: 5-Year Training Data Issue** - Resolved conflict where automatic historical comparison was overriding 5-year training data
-✓ **Enhanced Cache Management** - Added aggressive cache clearing mechanisms to prevent stale data
-✓ **Improved Logging** - Added detailed debug logging to track data loading processes
-✓ **Pipeline Isolation** - Separated validation data fetching from training data to prevent interference
 ✓ **Security Enhancement** - Moved SF311 API token from hardcoded values to secure environment variables
 ✓ **Priority Neighborhoods Fixed** - Corrected capitalization for "South Of Market" in priority selection
-✓ **UI Simplification** - Removed chart type selector, defaulting to line charts for better time series visualization
-✓ **Weekly Aggregation Fix** - Modified to allow partial first week but eliminate partial last week only
-✓ **Interface Cleanup** - Removed "About the Enhanced Pipeline" expandable section for cleaner UI
 
 ## Project Architecture
 
@@ -25,6 +26,8 @@ A sophisticated Streamlit dashboard for predicting San Francisco 311 Street and 
 ### Key Features
 - **5-Year Historical Training**: Uses 1825 days of historical data for robust model training
 - **Smart Model Selection**: MASE-based model comparison with weekly repetition detection
+- **Day-by-Day Heatmap**: Interactive geospatial visualization with date selector
+- **Smart Caching**: 1-hour data cache, 24-hour metadata cache for optimal performance
 - **Enhanced Validation**: Comprehensive error handling and prediction validation
 - **Multi-Format Output**: Saves predictions as both CSV and JSON with metadata
 
@@ -42,9 +45,11 @@ A sophisticated Streamlit dashboard for predicting San Francisco 311 Street and 
 - **Output**: Wants both CSV and JSON export formats
 
 ## Technical Decisions
-- **Cache Management**: Aggressive clearing to prevent stale data issues
+- **Smart Caching**: 1-hour TTL for data, 24-hour TTL for metadata to balance freshness and performance
 - **Pipeline Architecture**: Isolated validation from training to prevent data conflicts
 - **Model Selection**: MASE metrics with weekly repetition penalties
+- **Geospatial Visualization**: True heatmap with density points and interactive date selection
+- **Cache Controls**: Manual override buttons for forced refresh or cached reload
 - **Date Range**: Default forecast to end of current year
 
 ## Known Issues Resolved

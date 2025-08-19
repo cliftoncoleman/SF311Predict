@@ -99,15 +99,30 @@ def create_simple_bar_chart(data: pd.DataFrame) -> go.Figure:
     return fig
 
 def load_working_data():
-    """Load data using the working pipeline"""
+    """Load data using the working pipeline with smart caching"""
     try:
         with st.spinner("Loading SF311 data with 5-year training pipeline..."):
-            # Clear all Streamlit caches first
-            st.cache_data.clear()
-            st.cache_resource.clear()
+            # Smart cache strategy: Only clear if data is older than 1 hour
+            # This dramatically speeds up repeated loads while ensuring fresh data
+            should_clear_cache = False
             
-            # Create completely fresh pipeline instance to bypass any caching issues
-            fresh_pipeline = FixedSF311Pipeline()
+            if st.session_state.last_working_refresh:
+                time_since_last = datetime.now() - st.session_state.last_working_refresh
+                if time_since_last > timedelta(hours=1):
+                    should_clear_cache = True
+                    st.info("Cache expired (>1 hour), refreshing data...")
+            else:
+                should_clear_cache = True
+                st.info("First load, fetching fresh data...")
+            
+            if should_clear_cache:
+                st.cache_data.clear()
+                st.cache_resource.clear()
+            else:
+                st.info("Using cached data for faster loading...")
+            
+            # Use existing pipeline instance for better performance
+            fresh_pipeline = pipeline if not should_clear_cache else FixedSF311Pipeline()
             
             # Explicitly verify the days_back parameter
             st.info("Loading 1825 days (5 years) of historical data for training...")
@@ -233,6 +248,17 @@ def main():
         
         if st.button("Load Enhanced Data", type="primary"):
             load_working_data()
+        
+        # Add cache management controls
+        if st.button("Force Refresh (Clear Cache)"):
+            st.cache_data.clear()
+            st.cache_resource.clear()
+            st.session_state.last_working_refresh = None
+            st.info("Cache cleared! Click 'Load Enhanced Data' for fresh data.")
+            
+        if st.session_state.working_data is not None:
+            if st.button("Quick Reload (Use Cache)"):
+                st.info("Reloading with cached data...")
         
 
         

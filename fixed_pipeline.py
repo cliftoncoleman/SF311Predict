@@ -103,10 +103,11 @@ class FixedSF311Pipeline:
         self.session = requests.Session()
         self.session.headers.update({"X-App-Token": self.app_token})
     
-    def get_field_names(self) -> set:
+    @st.cache_data(ttl=86400)  # Cache field names for 24 hours
+    def get_field_names(_self) -> set:
         """Get available field names from SF311 API metadata"""
         try:
-            r = self.session.get(self.meta_url, timeout=60)
+            r = _self.session.get(_self.meta_url, timeout=60)
             r.raise_for_status()
             meta = r.json()
             return {c["fieldName"] for c in meta.get("columns", [])}
@@ -190,7 +191,8 @@ class FixedSF311Pipeline:
             return pd.DataFrame(empty_cols)
         return pd.concat(frames, ignore_index=True)
 
-    def fetch_historical_data(self, start_days: int = 1825) -> pd.DataFrame:  # 5 years default
+    @st.cache_data(ttl=3600)  # Cache for 1 hour
+    def fetch_historical_data(_self, start_days: int = 1825) -> pd.DataFrame:  # 5 years default
         """Fetch historical SF311 data with enhanced neighborhood coalescing"""
         today = dt.date.today()
         start_date = today - dt.timedelta(days=start_days)
