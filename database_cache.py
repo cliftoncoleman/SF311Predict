@@ -197,16 +197,29 @@ class SmartSF311Pipeline:
             # No data at all - need full fetch
             return True, target_start, today
         
+        # Check if we have data spanning the full target range
+        # Get earliest date in our cache
+        with self.cache.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT MIN(date) FROM sf311_raw_data")
+                result = cur.fetchone()
+                earliest_cached = result[0] if result and result[0] else None
+        
+        if not earliest_cached:
+            # No data - need full fetch
+            return True, target_start, today
+        
+        # Check if we have the full historical span
+        if earliest_cached > target_start:
+            # Missing historical data - fetch from target start to earliest we have
+            return True, target_start, earliest_cached - timedelta(days=1)
+        
+        # Check if we're missing recent data
         if last_cached < today - timedelta(days=1):
             # Missing recent data - incremental fetch
             return True, last_cached + timedelta(days=1), today
         
-        cached_span = (today - last_cached).days
-        if cached_span < target_days * 0.95:  # Less than 95% of target data
-            # Need more historical data
-            return True, target_start, last_cached - timedelta(days=1)
-        
-        # Cache is good
+        # Cache is complete
         return False, None, None
     
     def fetch_and_cache_data(self, target_days: int = 1825, force_refresh: bool = False) -> pd.DataFrame:
