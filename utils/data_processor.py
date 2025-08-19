@@ -46,24 +46,31 @@ class DataProcessor:
             return data
     
     def _aggregate_weekly(self, data: pd.DataFrame) -> pd.DataFrame:
-        """Aggregate data by week with proper confidence interval calculation - only complete weeks"""
+        """Aggregate data by week - allow partial first week, exclude partial last week"""
         try:
             data_copy = data.copy()
             
             # Create ISO week starting on Monday
             data_copy['week_start'] = data_copy['date'].dt.to_period('W-MON').dt.start_time
             
-            # Count days per week per neighborhood to filter out partial weeks
-            day_counts = data_copy.groupby(['week_start', 'neighborhood']).size().reset_index(name='day_count')
+            # Get the earliest and latest week starts for filtering
+            week_starts = data_copy['week_start'].unique()
+            week_starts_sorted = sorted(week_starts)
             
-            # Only keep weeks with 7 complete days
-            complete_weeks = day_counts[day_counts['day_count'] == 7][['week_start', 'neighborhood']]
+            if len(week_starts_sorted) > 1:
+                # Count days in each week per neighborhood
+                day_counts = data_copy.groupby(['week_start', 'neighborhood']).size().reset_index(name='day_count')
+                
+                # Find the last week and check if it's partial
+                last_week = week_starts_sorted[-1]
+                last_week_counts = day_counts[day_counts['week_start'] == last_week]
+                
+                # If last week has fewer than 7 days for any neighborhood, exclude it
+                if (last_week_counts['day_count'] < 7).any():
+                    data_copy = data_copy[data_copy['week_start'] != last_week]
             
-            # Filter original data to only include complete weeks
-            data_filtered = data_copy.merge(complete_weeks, on=['week_start', 'neighborhood'], how='inner')
-            
-            # Group and aggregate predictions for complete weeks only
-            grouped = data_filtered.groupby(['week_start', 'neighborhood'])
+            # Group and aggregate predictions (includes partial first week, excludes partial last week)
+            grouped = data_copy.groupby(['week_start', 'neighborhood'])
             
             # Sum the predicted requests
             predicted_sums = grouped['predicted_requests'].sum()

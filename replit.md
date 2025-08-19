@@ -11,6 +11,7 @@ A sophisticated Streamlit dashboard for predicting San Francisco 311 Street and 
 ✓ **Security Enhancement** - Moved SF311 API token from hardcoded values to secure environment variables
 ✓ **Priority Neighborhoods Fixed** - Corrected capitalization for "South Of Market" in priority selection
 ✓ **UI Simplification** - Removed chart type selector, defaulting to line charts for better time series visualization
+✓ **Weekly Aggregation Fix** - Modified to allow partial first week but eliminate partial last week only
 
 ## Project Architecture
 
