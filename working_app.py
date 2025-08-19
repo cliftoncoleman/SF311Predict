@@ -138,6 +138,16 @@ def load_working_data():
                 st.session_state.working_neighborhoods = ordered_neighborhoods
                 st.session_state.last_working_refresh = datetime.now()
                 
+                # Debug: Print neighborhood names to help identify missing ones
+                print(f"*** AVAILABLE NEIGHBORHOODS ({len(st.session_state.working_neighborhoods)}) ***")
+                for i, n in enumerate(st.session_state.working_neighborhoods):
+                    print(f"{i+1:2d}. '{n}'")
+                
+                # Check for South of Market variations
+                soma_variations = [n for n in available_neighborhoods 
+                                 if 'south' in n.lower() or 'soma' in n.lower() or 'market' in n.lower()]
+                print(f"*** SOUTH OF MARKET VARIATIONS: {soma_variations} ***")
+                
                 # Save predictions
                 try:
                     saved_files = pipeline.save_predictions_enhanced(predictions, "output")

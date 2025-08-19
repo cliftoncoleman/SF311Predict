@@ -1,114 +1,57 @@
 #!/usr/bin/env python3
-"""
-Debug script to check actual neighborhood column names and data in SF311 API
-"""
 
-import requests
-import json
+import sys
+sys.path.append('.')
+from fixed_pipeline import SF311Pipeline
+from neighborhood_coalescer import apply_neighborhood_coalescing
+from datetime import datetime, timedelta
+import pandas as pd
 
-def check_sf311_columns():
-    """Check what neighborhood columns are actually available"""
+def check_neighborhoods():
+    print("*** CHECKING NEIGHBORHOOD NAMES ***")
     
-    app_token = "TuXFZRAF7T8dnb1Rqk5VOdOKN"
-    meta_url = "https://data.sfgov.org/api/views/vw6y-z8j6?content=metadata"
+    # Get recent data to check neighborhood names
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=30)
     
     try:
-        response = requests.get(meta_url, headers={"X-App-Token": app_token}, timeout=30)
-        response.raise_for_status()
+        pipeline = SF311Pipeline()
+        data = pipeline.fetch_historical_data(30)
         
-        meta = response.json()
+        neighborhoods = sorted(data['neighborhood'].unique())
+        print(f'\nTotal neighborhoods: {len(neighborhoods)}')
+        print('\nAll neighborhoods:')
+        for i, n in enumerate(neighborhoods):
+            print(f'{i+1:2d}. "{n}"')
         
-        # Find neighborhood-related columns
-        neighborhood_columns = []
-        for col in meta.get("columns", []):
-            field_name = col.get("fieldName", "")
-            if "neigh" in field_name.lower():
-                neighborhood_columns.append({
-                    "fieldName": field_name,
-                    "name": col.get("name", ""),
-                    "description": col.get("description", "")
-                })
-        
-        print("=== NEIGHBORHOOD COLUMNS FOUND ===")
-        for col in neighborhood_columns:
-            print(f"Field: {col['fieldName']}")
-            print(f"Name: {col['name']}")
-            print(f"Description: {col['description']}")
-            print("-" * 50)
-        
-        return [col['fieldName'] for col in neighborhood_columns]
-        
-    except Exception as e:
-        print(f"Error fetching metadata: {e}")
-        return []
-
-def check_sample_data(neighborhood_fields):
-    """Check sample data for neighborhood fields"""
-    
-    if not neighborhood_fields:
-        print("No neighborhood fields to check")
-        return
-    
-    app_token = "TuXFZRAF7T8dnb1Rqk5VOdOKN"
-    base_url = "https://data.sfgov.org/resource/vw6y-z8j6.json"
-    
-    # Build select clause
-    select_fields = ",".join(neighborhood_fields)
-    
-    params = {
-        "$select": select_fields,
-        "$where": "service_name = 'Street and Sidewalk Cleaning'",
-        "$limit": 20
-    }
-    
-    try:
-        response = requests.get(base_url, params=params, headers={"X-App-Token": app_token}, timeout=30)
-        response.raise_for_status()
-        
-        data = response.json()
-        
-        print(f"\n=== SAMPLE DATA ({len(data)} records) ===")
-        for i, record in enumerate(data):
-            print(f"Record {i+1}:")
-            for field in neighborhood_fields:
-                value = record.get(field, "NOT_PRESENT")
-                print(f"  {field}: {value}")
-            print("-" * 30)
+        print('\nLooking for variations of "South of Market":')
+        soma_variations = [n for n in neighborhoods if 'south' in n.lower() or 'soma' in n.lower() or 'market' in n.lower()]
+        if soma_variations:
+            for n in soma_variations:
+                print(f'  - "{n}"')
+        else:
+            print('  - No matches found')
             
-        # Count unique values per field
-        print("\n=== UNIQUE VALUES COUNT ===")
-        for field in neighborhood_fields:
-            values = set()
-            for record in data:
-                val = record.get(field)
-                if val:
-                    values.add(val)
-            print(f"{field}: {len(values)} unique values")
-            if len(values) <= 10:
-                print(f"  Values: {sorted(values)}")
-            print()
+        print('\nChecking priority neighborhoods:')
+        priority_neighborhoods = [
+            "South of Market", "Tenderloin", "Hayes Valley", 
+            "Mission", "Bayview Hunters Point"
+        ]
         
+        for priority in priority_neighborhoods:
+            if priority in neighborhoods:
+                print(f'  ✓ "{priority}" - FOUND')
+            else:
+                print(f'  ✗ "{priority}" - MISSING')
+                # Look for similar names
+                similar = [n for n in neighborhoods if any(word.lower() in n.lower() for word in priority.split())]
+                if similar:
+                    print(f'    Similar: {similar}')
+                    
     except Exception as e:
-        print(f"Error fetching sample data: {e}")
+        print(f"Error: {e}")
+        import traceback
+        traceback.print_exc()
 
 if __name__ == "__main__":
-    print("SF311 Neighborhood Debug Script")
-    print("=" * 50)
-    
-    neighborhood_fields = check_sf311_columns()
-    
-    if neighborhood_fields:
-        check_sample_data(neighborhood_fields)
-    else:
-        print("No neighborhood fields found - checking if API is accessible")
-        
-        # Try a basic query
-        try:
-            response = requests.get("https://data.sfgov.org/resource/vw6y-z8j6.json?$limit=1", timeout=30)
-            print(f"API Status: {response.status_code}")
-            if response.status_code == 200:
-                print("API is accessible, but metadata fetch failed")
-            else:
-                print(f"API error: {response.text[:200]}")
-        except Exception as e:
-            print(f"API connection failed: {e}")
+    check_neighborhoods()
