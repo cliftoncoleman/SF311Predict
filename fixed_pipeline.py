@@ -77,50 +77,36 @@ def validate_predictions(df: pd.DataFrame) -> pd.DataFrame:
 
 
 class FixedSF311Pipeline:
-    """Fixed SF311 prediction pipeline with robust error handling"""
-    
-    class FixedSF311Pipeline:
-        """Fixed SF311 prediction pipeline with robust error handling"""
+    """Fixed SF311 prediction pipeline with robust error handling."""
 
-        def __init__(self):
-            self.base_url = "https://data.sfgov.org/resource/vw6y-z8j6.json"
-            self.meta_url = "https://data.sfgov.org/api/views/vw6y-z8j6?content=metadata"
+    def __init__(self):
+        self.base_url = "https://data.sfgov.org/resource/vw6y-z8j6.json"
+        self.meta_url = "https://data.sfgov.org/api/views/vw6y-z8j6?content=metadata"
 
-            # 🔐 Read SF311_APP_TOKEN from Streamlit Secrets first, then env var
-            token = None
-            try:
-                # st.secrets exists in Streamlit; .get returns None if missing
-                token = st.secrets.get("SF311_APP_TOKEN")
-            except Exception:
-                pass
-            if not token:
-                token = os.getenv("SF311_APP_TOKEN")
+        # Require SF311_APP_TOKEN from environment only
+        self.app_token = os.getenv("SF311_APP_TOKEN")
+        if not self.app_token:
+            raise RuntimeError(
+                "SF311_APP_TOKEN environment variable is required. "
+                "Set it in your environment (or Replit Secrets)."
+            )
 
-            if not token:
-                raise RuntimeError(
-                    "SF311_APP_TOKEN is required. Set it in Streamlit Secrets "
-                    "(App → Manage app → Settings → Secrets) or as an environment variable."
-                )
+        self.time_field = "requested_datetime"
+        self.category_field = "service_name"
+        self.category_value = "Street and Sidewalk Cleaning"
+        self.page_size = 50000
 
-            self.app_token = token
+        self.FOURIER_K_YEAR = 5  # Reduced for stability
+        self.max_forecast_horizon = 200  # Allow forecasting through end of year
 
-            self.time_field = "requested_datetime"
-            self.category_field = "service_name"
-            self.category_value = "Street and Sidewalk Cleaning"
-            self.page_size = 50000
+        self.neighbor_pref_order = [
+            "analysis_neighborhood",
+            "neighborhoods_sffind_boundaries",
+            "neighborhood_district",
+        ]
 
-            self.FOURIER_K_YEAR = 5
-            self.max_forecast_horizon = 200
-
-            self.neighbor_pref_order = [
-                "analysis_neighborhood",
-                "neighborhoods_sffind_boundaries", 
-                "neighborhood_district",
-            ]
-
-            # Session with required header
-            self.session = requests.Session()
-            self.session.headers.update({"X-App-Token": self.app_token})
+        self.session = requests.Session()
+        self.session.headers.update({"X-App-Token": self.app_token})
 
     
     def get_field_names(self) -> set:
