@@ -301,10 +301,21 @@ class SmartSF311Pipeline:
         historical_data = self.fetch_and_cache_data(target_days, force_refresh)
         
         if historical_data.empty:
-            return pd.DataFrame()
+            st.error("No historical data available - using API directly")
+            # Fallback to direct API call if cache fails
+            historical_data = self.api_pipeline.fetch_historical_data(target_days)
+            if not historical_data.empty:
+                st.info(f"Using direct API data: {len(historical_data)} records")
+                # Try to store it for next time
+                try:
+                    self.cache.store_data(historical_data)
+                except Exception as e:
+                    st.warning(f"Could not cache data: {e}")
+            else:
+                return pd.DataFrame()
         
         # Use the prediction logic from fixed pipeline
-        st.info("🤖 Generating predictions from cached data...")
+        st.info("🤖 Generating predictions from historical data...")
         
         # Create predictions using the same logic as fixed pipeline but with cached data
         return self._generate_predictions_from_cached_data(historical_data)
