@@ -311,6 +311,13 @@ class SmartSF311Pipeline:
         # Get cached historical data
         historical_data = self.fetch_and_cache_data(target_days, force_refresh)
         
+        # Normalize types for consistent downstream processing
+        if not historical_data.empty:
+            historical_data = historical_data.copy()
+            historical_data['date'] = pd.to_datetime(historical_data['date']).dt.normalize()
+            historical_data['neighborhood'] = historical_data['neighborhood'].astype(str)
+            historical_data['cases'] = historical_data['cases'].fillna(0).astype(int)
+        
         if historical_data.empty:
             st.error("No historical data available - using API directly")
             # Fallback to direct API call if cache fails

@@ -825,23 +825,22 @@ class FixedSF311Pipeline:
             nbhd_data = historical_data[historical_data['neighborhood'] == neighborhood].copy()
             nbhd_data = nbhd_data.sort_values('date').reset_index(drop=True)
             
-            # Sanity-log that each neighborhood truly sees 5y
+            # DENSIFY FIRST – fill missing dates with 0 cases so the length reflects the true time span
+            nbhd_data = self._ensure_continuous_days(nbhd_data)
+            
+            # Sanity-log with the densified series
             min_date = nbhd_data['date'].min()
             max_date = nbhd_data['date'].max()
-            # Handle both datetime and date objects
-            if hasattr(min_date, 'date'):
+            if hasattr(min_date, 'date'): 
                 min_date = min_date.date()
-            if hasattr(max_date, 'date'):
+            if hasattr(max_date, 'date'): 
                 max_date = max_date.date()
-            print(f"[{neighborhood}] train span: {min_date} → {max_date} | rows: {len(nbhd_data)}")
+            print(f"[{neighborhood}] train span (densified): {min_date} → {max_date} | rows: {len(nbhd_data)}")
             
-            # Guardrails for small/volatile neighborhoods
+            # Now length checks make sense
             MIN_TRAIN_DAYS = 30
             if len(nbhd_data) < MIN_TRAIN_DAYS:
-                # Skip neighborhoods with insufficient data
                 continue
-            
-            nbhd_data = self._ensure_continuous_days(nbhd_data)
             
             if len(nbhd_data) < 60:
                 forecast = self._simple_neighborhood_forecast(neighborhood, nbhd_data, prediction_days)
@@ -881,9 +880,12 @@ class FixedSF311Pipeline:
             return self._generate_baseline_predictions(prediction_days)
     
     def _ensure_continuous_days(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Fill missing dates with 0 cases"""
+        """Fill missing dates with 0 cases, capped to last 5 years"""
         df['date'] = pd.to_datetime(df['date'])
-        date_range = pd.date_range(start=df['date'].min(), end=df['date'].max(), freq='D')
+        # Cap the range to the last 5 years to prevent extreme spans
+        start = max(df['date'].min(), pd.Timestamp.today().normalize() - pd.Timedelta(days=1825))
+        end = df['date'].max()
+        date_range = pd.date_range(start=start, end=end, freq='D')
         full_df = pd.DataFrame({'date': date_range})
         merged = full_df.merge(df, on='date', how='left')
         merged['cases'] = merged['cases'].fillna(0).astype(int)
