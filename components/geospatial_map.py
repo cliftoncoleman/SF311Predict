@@ -1,11 +1,12 @@
 import streamlit as st
 import pandas as pd
 import folium
+from folium.plugins import HeatMap, HeatMapWithTime
 import requests
 import json
 from streamlit_folium import st_folium
 import numpy as np
-from typing import Dict, Any
+from typing import Dict, Any, List, Tuple
 
 class GeospatialMapComponent:
     """Component for creating geospatial heatmaps of SF311 predictions"""
@@ -125,32 +126,110 @@ class GeospatialMapComponent:
         
         return f'#{r:02x}{g:02x}{b:02x}'
     
-    def create_geospatial_heatmap(self, data: pd.DataFrame, title: str = "SF311 Predictions Heatmap") -> folium.Map:
-        """Create a geospatial heatmap of SF311 predictions"""
+    def _get_neighborhood_centers(self) -> Dict[str, Tuple[float, float]]:
+        """Get approximate center coordinates for SF neighborhoods"""
+        # These are approximate centers for major SF neighborhoods
+        return {
+            "Mission": (37.7599, -122.4148),
+            "Castro": (37.7609, -122.4350),
+            "South Of Market": (37.7749, -122.4104),
+            "SOMA": (37.7749, -122.4104),
+            "Tenderloin": (37.7836, -122.4130),
+            "Hayes Valley": (37.7749, -122.4252),
+            "Chinatown": (37.7941, -122.4078),
+            "North Beach": (37.8067, -122.4103),
+            "Russian Hill": (37.8018, -122.4200),
+            "Nob Hill": (37.7946, -122.4094),
+            "Financial District": (37.7946, -122.3999),
+            "Richmond": (37.7806, -122.4644),
+            "Inner Richmond": (37.7806, -122.4644),
+            "Outer Richmond": (37.7781, -122.4944),
+            "Sunset": (37.7431, -122.4644),
+            "Inner Sunset": (37.7431, -122.4644),
+            "Outer Sunset": (37.7431, -122.4944),
+            "Parkside": (37.7331, -122.4844),
+            "Haight Ashbury": (37.7694, -122.4481),
+            "Western Addition": (37.7819, -122.4378),
+            "Fillmore": (37.7819, -122.4378),
+            "Pacific Heights": (37.7919, -122.4419),
+            "Marina": (37.8019, -122.4419),
+            "Presidio Heights": (37.7919, -122.4519),
+            "Laurel Heights": (37.7869, -122.4519),
+            "Japantown": (37.7850, -122.4300),
+            "Twin Peaks": (37.7544, -122.4477),
+            "Glen Park": (37.7331, -122.4331),
+            "Bernal Heights": (37.7431, -122.4131),
+            "Potrero Hill": (37.7631, -122.3981),
+            "Dogpatch": (37.7531, -122.3881),
+            "Bayview": (37.7331, -122.3881),
+            "Bayview Hunters Point": (37.7331, -122.3881),
+            "Hunters Point": (37.7231, -122.3781),
+            "Visitacion Valley": (37.7131, -122.4031),
+            "Excelsior": (37.7231, -122.4331),
+            "Outer Mission": (37.7181, -122.4481),
+            "Ingleside": (37.7181, -122.4631),
+            "Oceanview": (37.7131, -122.4731),
+            "Merced": (37.7081, -122.4831),
+            "Lakeshore": (37.7181, -122.4881),
+            "West Of Twin Peaks": (37.7394, -122.4677),
+            "Diamond Heights": (37.7444, -122.4377),
+            "Noe Valley": (37.7531, -122.4331),
+            "Presidio": (37.8019, -122.4719),
+            "Seacliff": (37.7869, -122.4919),
+            "Lake Street": (37.7819, -122.4719),
+            "Lone Mountain": (37.7819, -122.4619),
+            "Golden Gate Park": (37.7694, -122.4844),
+            "Treasure Island": (37.8269, -122.3719),
+            "Unknown": (37.7749, -122.4194)
+        }
+
+    def _generate_heat_points(self, data: pd.DataFrame) -> List[List[float]]:
+        """Generate heat points for the heatmap based on prediction data"""
+        neighborhood_centers = self._get_neighborhood_centers()
+        heat_points = []
         
-        # Create base map centered on SF
+        # Aggregate predictions by neighborhood
+        neighborhood_totals = data.groupby('neighborhood')['predicted_requests'].sum()
+        
+        for neighborhood, total_requests in neighborhood_totals.items():
+            # Get center coordinates for this neighborhood
+            center = neighborhood_centers.get(neighborhood)
+            if not center:
+                # Try mapping variations
+                mapped_name = self.neighborhood_mapping.get(neighborhood)
+                center = neighborhood_centers.get(mapped_name) if mapped_name else None
+            
+            if center and total_requests > 0:
+                lat, lng = center
+                
+                # Create multiple points around the center to simulate density
+                # Higher predictions = more points = more heat
+                intensity = min(total_requests / 10, 50)  # Scale intensity
+                
+                for i in range(int(intensity)):
+                    # Add some random variation around the center
+                    lat_offset = np.random.normal(0, 0.005)  # ~500m variation
+                    lng_offset = np.random.normal(0, 0.005)
+                    
+                    heat_points.append([
+                        lat + lat_offset,
+                        lng + lng_offset,
+                        total_requests / 100  # Weight for heat intensity
+                    ])
+        
+        return heat_points
+
+    def create_geospatial_heatmap(self, data: pd.DataFrame, title: str = "SF311 Predictions Heatmap") -> folium.Map:
+        """Create a true geospatial heatmap of SF311 predictions"""
+        
+        # Create base map centered on SF with dark tiles for better heat contrast
         m = folium.Map(
             location=self.sf_center,
             zoom_start=12,
-            tiles='OpenStreetMap'
+            tiles='CartoDB dark_matter'
         )
         
-        # Fetch neighborhood boundaries
-        neighborhoods_geojson = self._fetch_neighborhoods_geojson()
-        if not neighborhoods_geojson:
-            # Add error message to map
-            folium.Marker(
-                self.sf_center,
-                popup="Could not load neighborhood boundaries",
-                icon=folium.Icon(color='red')
-            ).add_to(m)
-            return m
-        
-        # Aggregate prediction data by neighborhood
-        neighborhood_totals = self._aggregate_predictions_by_neighborhood(data)
-        
-        if not neighborhood_totals:
-            # Add message for no data
+        if data.empty:
             folium.Marker(
                 self.sf_center,
                 popup="No prediction data available",
@@ -158,56 +237,82 @@ class GeospatialMapComponent:
             ).add_to(m)
             return m
         
-        # Get min/max values for color scaling
-        values = list(neighborhood_totals.values())
-        min_val, max_val = min(values), max(values)
+        # Generate heat points from prediction data
+        heat_points = self._generate_heat_points(data)
         
-        # Add neighborhoods to map with color coding
-        for feature in neighborhoods_geojson['features']:
-            neighborhood_name = feature['properties'].get('nhood', 'Unknown')
-            
-            # Get prediction total for this neighborhood
-            total_predictions = neighborhood_totals.get(neighborhood_name, 0)
-            
-            # Determine color based on prediction volume
-            if total_predictions > 0:
-                color = self._get_color_scale(total_predictions, min_val, max_val)
-                opacity = 0.7
-            else:
-                color = '#cccccc'  # Gray for no data
-                opacity = 0.3
-            
-            # Create popup content
-            popup_content = f"""
-            <b>{neighborhood_name}</b><br>
-            Predicted Requests: {total_predictions:,.0f}<br>
-            Rank: {sorted(values, reverse=True).index(total_predictions) + 1 if total_predictions > 0 else 'N/A'} of {len(values)}
-            """
-            
-            # Add neighborhood polygon to map
-            folium.GeoJson(
-                feature,
-                style_function=lambda x, color=color, opacity=opacity: {
-                    'fillColor': color,
-                    'color': 'black',
-                    'weight': 1,
-                    'fillOpacity': opacity
-                },
-                popup=folium.Popup(popup_content, max_width=300),
-                tooltip=f"{neighborhood_name}: {total_predictions:,.0f} requests"
+        if not heat_points:
+            folium.Marker(
+                self.sf_center,
+                popup="No valid location data for neighborhoods",
+                icon=folium.Icon(color='red')
             ).add_to(m)
+            return m
+        
+        # Add heatmap layer
+        HeatMap(
+            heat_points,
+            min_opacity=0.2,
+            max_zoom=18,
+            radius=25,
+            blur=15,
+            gradient={
+                0.0: 'blue',
+                0.2: 'cyan', 
+                0.4: 'lime',
+                0.6: 'yellow',
+                0.8: 'orange',
+                1.0: 'red'
+            }
+        ).add_to(m)
+        
+        # Add neighborhood markers with prediction totals
+        neighborhood_totals = self._aggregate_predictions_by_neighborhood(data)
+        neighborhood_centers = self._get_neighborhood_centers()
+        
+        for neighborhood, total_requests in neighborhood_totals.items():
+            center = neighborhood_centers.get(neighborhood)
+            if not center:
+                # Try mapping variations
+                mapped_name = self.neighborhood_mapping.get(neighborhood)
+                center = neighborhood_centers.get(mapped_name) if mapped_name else None
+            
+            if center and total_requests > 0:
+                # Determine marker color based on prediction volume
+                if total_requests > np.percentile(list(neighborhood_totals.values()), 75):
+                    color = 'red'
+                elif total_requests > np.percentile(list(neighborhood_totals.values()), 50):
+                    color = 'orange'
+                elif total_requests > np.percentile(list(neighborhood_totals.values()), 25):
+                    color = 'green'
+                else:
+                    color = 'blue'
+                
+                folium.CircleMarker(
+                    location=center,
+                    radius=8,
+                    popup=f"""
+                    <b>{neighborhood}</b><br>
+                    Predicted Requests: {total_requests:,.0f}<br>
+                    Rank: {sorted(neighborhood_totals.values(), reverse=True).index(total_requests) + 1} of {len(neighborhood_totals)}
+                    """,
+                    color='white',
+                    weight=2,
+                    fillColor=color,
+                    fillOpacity=0.8
+                ).add_to(m)
         
         # Add legend
         legend_html = f'''
         <div style="position: fixed; 
-                    bottom: 50px; left: 50px; width: 200px; height: 120px; 
+                    bottom: 50px; left: 50px; width: 220px; height: 140px; 
                     background-color: white; border:2px solid grey; z-index:9999; 
-                    font-size:14px; padding: 10px">
+                    font-size:12px; padding: 10px">
         <p><b>{title}</b></p>
-        <p><i class="fa fa-square" style="color:#ff0000"></i> High: {max_val:,.0f}</p>
-        <p><i class="fa fa-square" style="color:#ffff00"></i> Medium: {(max_val + min_val) / 2:,.0f}</p>
-        <p><i class="fa fa-square" style="color:#0000ff"></i> Low: {min_val:,.0f}</p>
-        <p><i class="fa fa-square" style="color:#cccccc"></i> No Data</p>
+        <p><span style="color:red">●</span> Heat intensity shows prediction density</p>
+        <p><span style="color:red">●</span> Top 25% neighborhoods</p>
+        <p><span style="color:orange">●</span> 50-75% neighborhoods</p>
+        <p><span style="color:green">●</span> 25-50% neighborhoods</p>
+        <p><span style="color:blue">●</span> Bottom 25% neighborhoods</p>
         </div>
         '''
         m.get_root().html.add_child(folium.Element(legend_html))

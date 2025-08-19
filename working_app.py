@@ -223,7 +223,7 @@ def create_demo_data():
 def main():
     """Main working application"""
     
-    st.title("Enhanced SF311 Street & Sidewalk Cleaning Predictions")
+    st.title("SF311 Street & Sidewalk Cleaning Predictions")
     
     st.markdown("---")
     
