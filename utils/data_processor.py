@@ -53,23 +53,21 @@ class DataProcessor:
             # Create ISO week starting on Monday
             data_copy['week_start'] = data_copy['date'].dt.to_period('W-MON').dt.start_time
             
-            # Get the earliest and latest week starts for filtering
-            week_starts = data_copy['week_start'].unique()
-            week_starts_sorted = sorted(week_starts)
+            # Get all unique week starts and sort them
+            week_starts = sorted(data_copy['week_start'].unique())
             
-            if len(week_starts_sorted) > 1:
-                # Count days in each week per neighborhood
-                day_counts = data_copy.groupby(['week_start', 'neighborhood']).size().reset_index(name='day_count')
+            if len(week_starts) > 1:
+                # Count days in the last week across all neighborhoods
+                last_week = week_starts[-1]
+                last_week_data = data_copy[data_copy['week_start'] == last_week]
+                unique_dates_last_week = last_week_data['date'].nunique()
                 
-                # Find the last week and check if it's partial
-                last_week = week_starts_sorted[-1]
-                last_week_counts = day_counts[day_counts['week_start'] == last_week]
-                
-                # If last week has fewer than 7 days for any neighborhood, exclude it
-                if (last_week_counts['day_count'] < 7).any():
+                # If last week has fewer than 7 unique days, exclude it entirely
+                if unique_dates_last_week < 7:
+                    print(f"Excluding partial last week ({last_week}) with only {unique_dates_last_week} days")
                     data_copy = data_copy[data_copy['week_start'] != last_week]
             
-            # Group and aggregate predictions (includes partial first week, excludes partial last week)
+            # Group and aggregate predictions
             grouped = data_copy.groupby(['week_start', 'neighborhood'])
             
             # Sum the predicted requests
@@ -84,10 +82,10 @@ class DataProcessor:
             # Create final aggregated dataframe
             aggregated = pd.DataFrame({
                 'date': predicted_sums.index.get_level_values('week_start'),
-                'neighborhood': predicted_sums.index.get_level_values('neighborhood'),
+                'neighborhood': predicted_sums.index.get_level_values('neighborhood'), 
                 'predicted_requests': predicted_sums.values,
-                'confidence_lower': predicted_sums.values - lower_diffs.values,
-                'confidence_upper': predicted_sums.values + upper_diffs.values
+                'confidence_lower': (predicted_sums - lower_diffs).values,
+                'confidence_upper': (predicted_sums + upper_diffs).values
             })
             
             # Ensure confidence bounds are reasonable
