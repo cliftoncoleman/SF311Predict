@@ -102,27 +102,24 @@ def load_working_data():
     """Load data using the working pipeline with smart caching"""
     try:
         with st.spinner("Loading SF311 data with 5-year training pipeline..."):
-            # Smart cache strategy: Only clear if data is older than 1 hour
-            # This dramatically speeds up repeated loads while ensuring fresh data
-            should_clear_cache = False
+            # Smart session-based caching for better performance
+            cache_key = f"sf311_data_{datetime.now().strftime('%Y%m%d_%H')}"  # Hourly cache key
             
-            if st.session_state.last_working_refresh:
+            # Check if we have recent cached data
+            if (hasattr(st.session_state, cache_key) and 
+                hasattr(st.session_state, 'last_working_refresh') and 
+                st.session_state.last_working_refresh):
+                
                 time_since_last = datetime.now() - st.session_state.last_working_refresh
-                if time_since_last > timedelta(hours=1):
-                    should_clear_cache = True
-                    st.info("Cache expired (>1 hour), refreshing data...")
-            else:
-                should_clear_cache = True
-                st.info("First load, fetching fresh data...")
+                if time_since_last < timedelta(hours=1):
+                    st.info("Using cached data for faster loading...")
+                    st.session_state.working_data = getattr(st.session_state, cache_key)
+                    st.session_state.working_neighborhoods = sorted(st.session_state.working_data['neighborhood'].unique())
+                    st.success(f"Data loaded from cache! {len(st.session_state.working_data)} records from {len(st.session_state.working_neighborhoods)} neighborhoods")
+                    return
             
-            if should_clear_cache:
-                st.cache_data.clear()
-                st.cache_resource.clear()
-            else:
-                st.info("Using cached data for faster loading...")
-            
-            # Use existing pipeline instance for better performance
-            fresh_pipeline = pipeline if not should_clear_cache else FixedSF311Pipeline()
+            st.info("Fetching fresh data...")
+            fresh_pipeline = FixedSF311Pipeline()
             
             # Explicitly verify the days_back parameter
             st.info("Loading 1825 days (5 years) of historical data for training...")
@@ -135,6 +132,11 @@ def load_working_data():
             
             if not predictions.empty:
                 st.session_state.working_data = predictions
+                
+                # Cache the data with hourly key
+                cache_key = f"sf311_data_{datetime.now().strftime('%Y%m%d_%H')}"
+                setattr(st.session_state, cache_key, predictions)
+                
                 # Use specific default neighborhoods in priority order (exact case match)
                 priority_neighborhoods = [
                     "South Of Market", "Tenderloin", "Hayes Valley", 

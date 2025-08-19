@@ -103,16 +103,22 @@ class FixedSF311Pipeline:
         self.session = requests.Session()
         self.session.headers.update({"X-App-Token": self.app_token})
     
-    @st.cache_data(ttl=86400)  # Cache field names for 24 hours
     def get_field_names(self) -> set:
         """Get available field names from SF311 API metadata"""
+        from utils.cache_helpers import get_field_names_cached
+        
+        # Use cached version for better performance
         try:
-            r = self.session.get(self.meta_url, timeout=60)
-            r.raise_for_status()
-            meta = r.json()
-            return {c["fieldName"] for c in meta.get("columns", [])}
+            return get_field_names_cached(self.meta_url, self.app_token)
         except Exception:
-            return set()
+            # Fallback to direct call
+            try:
+                r = self.session.get(self.meta_url, timeout=60)
+                r.raise_for_status()
+                meta = r.json()
+                return {c["fieldName"] for c in meta.get("columns", [])}
+            except Exception:
+                return set()
 
     def get_available_neighborhood_fields(self, field_names: set) -> List[str]:
         """Get all available neighborhood fields, prioritizing analysis boundaries"""
@@ -191,9 +197,8 @@ class FixedSF311Pipeline:
             return pd.DataFrame(empty_cols)
         return pd.concat(frames, ignore_index=True)
 
-    @st.cache_data(ttl=3600)  # Cache for 1 hour
     def fetch_historical_data(self, start_days: int = 1825) -> pd.DataFrame:  # 5 years default
-        """Fetch historical SF311 data with enhanced neighborhood coalescing"""
+        """Fetch historical SF311 data - uncached version"""
         today = dt.date.today()
         start_date = today - dt.timedelta(days=start_days)
         
