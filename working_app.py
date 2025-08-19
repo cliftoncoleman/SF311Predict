@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import numpy as np
 from fixed_pipeline import FixedSF311Pipeline
 from utils.data_processor import DataProcessor
+from components.geospatial_map import GeospatialMapComponent
 
 # Page configuration
 st.set_page_config(
@@ -31,9 +32,13 @@ def get_working_pipeline():
 def get_data_processor():
     return DataProcessor()
 
+def get_map_component():
+    return GeospatialMapComponent()
+
 # Create fresh instances each time to avoid caching issues
 pipeline = get_working_pipeline()
 processor = get_data_processor()
+map_component = get_map_component()
 
 def create_simple_line_chart(data: pd.DataFrame) -> go.Figure:
     """Create simple working line chart"""
@@ -380,6 +385,18 @@ def main():
     fig = create_simple_line_chart(aggregated_data)
     
     st.plotly_chart(fig, use_container_width=True)
+    
+    # Geospatial Heatmap - Shows ALL neighborhoods (independent of selector)
+    st.markdown("---")
+    try:
+        # Use ALL data (not filtered by neighborhood selection) for the map
+        full_data_for_map = st.session_state.working_data.copy()
+        map_component.render_map_component(full_data_for_map, f"SF311 Predictions - All Neighborhoods ({aggregation_level.title()})")
+    except Exception as e:
+        st.error(f"Error loading geospatial map: {str(e)}")
+        st.info("Map requires internet connection to load neighborhood boundaries")
+    
+    st.markdown("---")
     
     # Summary metrics
     col1, col2, col3, col4 = st.columns(4)
