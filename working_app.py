@@ -114,7 +114,7 @@ def load_working_data():
                 st.info("Using cached data for faster loading...")
                 st.session_state.working_data = getattr(st.session_state, cache_key)
                 st.session_state.working_neighborhoods = sorted(st.session_state.working_data['neighborhood'].unique())
-                st.success(f"Data loaded from cache! {len(st.session_state.working_data)} records from {len(st.session_state.working_neighborhoods)} neighborhoods")
+                st.success(f"Data loaded from cache! Forecasts for {len(st.session_state.working_neighborhoods)} neighborhoods now available")
                 return
         
         # Create a compact status container for live updates
@@ -130,7 +130,7 @@ def load_working_data():
             status_box.info("🔄 **Loading Status:** Fetching 5 years of historical data from SF311 API...")
             
             # Start prediction process
-            status_box.info("🔄 **Loading Status:** Training models for 42+ neighborhoods (this may take a moment)...")
+            status_box.info("🔄 **Loading Status:** Training models for 42+ neighborhoods (this may take a few minuts upon first run)...")
             
             # Add a small expandable section for technical details
             with st.expander("📊 See Technical Details", expanded=False):
@@ -182,7 +182,7 @@ def load_working_data():
                 # Save predictions
                 try:
                     saved_files = pipeline.save_predictions_enhanced(predictions, "output")
-                    st.success(f"Data loaded! {len(predictions)} records from {len(st.session_state.working_neighborhoods)} neighborhoods")
+
                     with st.expander("Files saved"):
                         st.write(f"CSV: {saved_files['csv_path']}")
                         st.write(f"JSON: {saved_files['json_path']}")
@@ -263,9 +263,9 @@ def main():
     
     # Sidebar controls
     with st.sidebar:
-        st.header("Dashboard Controls")
+        st.header("App Controls")
         
-        if st.button("Load Enhanced Data", type="primary"):
+        if st.button("Load App", type="primary"):
             load_working_data()
         
         # Add cache management controls
@@ -273,11 +273,8 @@ def main():
             st.cache_data.clear()
             st.cache_resource.clear()
             st.session_state.last_working_refresh = None
-            st.info("Cache cleared! Click 'Load Enhanced Data' for fresh data.")
-            
-        if st.session_state.working_data is not None:
-            if st.button("Quick Reload (Use Cache)"):
-                st.info("Reloading with cached data...")
+            st.info("Cache cleared! Click 'Load App' for fresh data.")
+        
         
 
         
@@ -301,6 +298,7 @@ def main():
                 min_value=min_date,
                 max_value=max_date
             )
+            
             
             # Neighborhood filter
             st.subheader("Neighborhoods")
@@ -360,51 +358,86 @@ def main():
                 help="Daily: Shows 1 week • Weekly: Shows 4 weeks • Monthly: Shows full forecast period"
             )
         else:
-            st.info("Click 'Load Enhanced Data' to get started!")
+            st.info("Click 'Load App to get started!")
             date_range = None
             selected_neighborhoods = []
             aggregation_level = "daily"
     
     # Main content
     if st.session_state.working_data is None:
-        st.info("Click 'Load Enhanced Data' in the sidebar to see the enhanced prediction pipeline in action!")
+        st.info("Click 'Load App' in the sidebar to see the prediction pipeline in action!")
         return
     
-    # Filter data
-    filtered_data = st.session_state.working_data.copy()
-    filtered_data['date'] = pd.to_datetime(filtered_data['date'])
-    
-    # Apply intelligent time filtering based on aggregation level
-    if aggregation_level == "daily":
-        # Daily: show only next 7 days for readability
-        start_date = filtered_data['date'].min()
-        end_date = start_date + timedelta(days=7)
-        mask = (filtered_data['date'] >= start_date) & (filtered_data['date'] <= end_date)
-        filtered_data = filtered_data[mask]
-        time_info = "Showing next 7 days for daily view"
-    elif aggregation_level == "weekly":
-        # Weekly: show next 4 weeks (1 month)
-        start_date = filtered_data['date'].min()
-        end_date = start_date + timedelta(days=28)
-        mask = (filtered_data['date'] >= start_date) & (filtered_data['date'] <= end_date)
-        filtered_data = filtered_data[mask]
-        time_info = "Showing next 4 weeks for weekly view"
-    else:  # monthly
-        # Monthly: show all available data (to end of year)
-        time_info = "Showing full forecast period for monthly view"
-    
-    # Override with user date selection if provided
-    if date_range and len(date_range) == 2:
-        start_date, end_date = date_range
-        mask = (filtered_data['date'].dt.date >= start_date) & (filtered_data['date'].dt.date <= end_date)
-        filtered_data = filtered_data[mask]
-        time_info = f"Custom date range: {start_date} to {end_date}"
-    
+    # Start from full data each time
+    base_data = st.session_state.working_data.copy()
+    base_data['date'] = pd.to_datetime(base_data['date'])
+
+    # Figure out if user changed the default date range
+    data_min = base_data['date'].min().date()
+    data_max = base_data['date'].max().date()
+
+    custom_range = (
+        date_range and len(date_range) == 2 and
+        not (data_min == date_range[0] and data_max == date_range[1])
+    )
+
+    # Helper: window length by aggregation level
+    def _window_days_for(level: str) -> int | None:
+        if level == "daily":
+            return 7
+        if level == "weekly":
+            return 28
+        return None  # monthly = full span
+
+    # 1) Start with either full data or the user's custom span
+    if custom_range:
+        user_start, user_end = date_range
+        # keep only the user-selected span first
+        filtered_data = base_data[
+            (base_data['date'].dt.date >= user_start) &
+            (base_data['date'].dt.date <= user_end)
+        ]
+        # 2) Inside the user's span, still apply the auto window for daily/weekly
+        win_days = _window_days_for(aggregation_level)
+        if win_days is not None and not filtered_data.empty:
+            start_date = filtered_data['date'].min().normalize()
+            end_date = min(start_date + timedelta(days=win_days), pd.to_datetime(user_end) + timedelta(days=1))
+            # Note: end_date is exclusive when using >= and < to avoid off-by-one with normalize()
+            filtered_data = filtered_data[(filtered_data['date'] >= start_date) & (filtered_data['date'] < end_date)]
+            time_info = f"{aggregation_level.title()} view window inside custom range: {start_date.date()} → {(end_date - timedelta(days=1)).date()}"
+        else:
+            time_info = f"Custom date range: {user_start} → {user_end}"
+    else:
+        # No custom range: use the default auto windows
+        win_days = _window_days_for(aggregation_level)
+        if win_days is not None:
+            start_date = base_data['date'].min().normalize()
+            end_date = start_date + timedelta(days=win_days)
+            filtered_data = base_data[(base_data['date'] >= start_date) & (base_data['date'] < end_date)]
+            time_info = "Showing next 7 days (Daily)" if aggregation_level == "daily" else "Showing next 4 weeks (Weekly)"
+        else:
+            filtered_data = base_data.copy()
+            time_info = "Showing full forecast period (Monthly)"
+
+    # Neighborhood filter AFTER time windowing
     if selected_neighborhoods:
         filtered_data = filtered_data[filtered_data['neighborhood'].isin(selected_neighborhoods)]
-    
-    # Show time range info
-    st.info(f"📅 {time_info}")
+
+    st.markdown(
+        f"""
+        <div style="background:#f0f2f6; padding:10px 14px; border-radius:8px;">
+          <div>📅 {time_info}</div>
+         <p> <div style="font-size:0.9em; color:#6b7280;">
+            Use <b>Data Aggregation</b> and <b>Date Range</b> controls to adjust the view.<br>
+            <i>Note:</i> 'Monthly' view shows the full forecast period (up to end of year).
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+
     
     if filtered_data.empty:
         st.warning("No data matches the current filters")
@@ -420,73 +453,51 @@ def main():
         st.error(f"Error processing aggregation: {str(e)}")
         aggregated_data = filtered_data
     
+    # Summary metrics
+
+    st.subheader(f"Summary Metrics")
+    st.caption("for above date range and neighborhoods")
+    
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        total_requests = aggregated_data['predicted_requests'].sum()
+        st.metric("Total Predicted", f"{total_requests:,.0f}")
+
+    with col2:
+        avg_requests = aggregated_data['predicted_requests'].mean()
+        avg_label = f"Average {aggregation_level.title()}"
+        st.metric(avg_label, f"{avg_requests:.1f}")
+
+    with col3:
+        peak_requests = aggregated_data['predicted_requests'].max()
+        peak_label = f"Peak {aggregation_level.title()}"
+        st.metric(peak_label, f"{peak_requests:.0f}")
+
+    with col4:
+        if 'confidence_lower' in aggregated_data.columns:
+            avg_uncertainty = (aggregated_data['confidence_upper'] - aggregated_data['confidence_lower']).mean()
+            st.metric("Avg Uncertainty", f"±{avg_uncertainty/2:.1f}")
+
+    
+    
     # Display chart
+    st.markdown("---")
     st.subheader(f"Enhanced Predictions ({aggregation_level.title()} View)")
     
     fig = create_simple_line_chart(aggregated_data)
     
     st.plotly_chart(fig, use_container_width=True)
-    
-    # Geospatial Heatmap - Shows ALL neighborhoods (independent of selector)
-    st.markdown("---")
-    try:
-        # Use ALL data (not filtered by neighborhood selection) for the map
-        full_data_for_map = st.session_state.working_data.copy()
-        map_component.render_map_component(full_data_for_map, f"SF311 Predictions - All Neighborhoods ({aggregation_level.title()})")
-    except Exception as e:
-        st.error(f"Error loading geospatial map: {str(e)}")
-        st.info("Map requires internet connection to load neighborhood boundaries")
-    
-    st.markdown("---")
-    
-    # Summary metrics
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        total_requests = aggregated_data['predicted_requests'].sum()
-        st.metric("Total Predicted", f"{total_requests:,.0f}")
-    
-    with col2:
-        avg_requests = aggregated_data['predicted_requests'].mean()
-        avg_label = f"Average {aggregation_level.title()}"
-        st.metric(avg_label, f"{avg_requests:.1f}")
-    
-    with col3:
-        peak_requests = aggregated_data['predicted_requests'].max()
-        peak_label = f"Peak {aggregation_level.title()}"
-        st.metric(peak_label, f"{peak_requests:.0f}")
-    
-    with col4:
-        if 'confidence_lower' in aggregated_data.columns:
-            avg_uncertainty = (aggregated_data['confidence_upper'] - aggregated_data['confidence_lower']).mean()
-            st.metric("Avg Uncertainty", f"±{avg_uncertainty/2:.1f}")
-    
-    # Data quality metrics
-    st.markdown("---")
-    st.subheader("Data Quality Validation")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        total_records = len(aggregated_data)
-        valid_predictions = (aggregated_data['predicted_requests'] >= 0).sum()
-        st.metric("Non-negative Predictions", f"{valid_predictions}/{total_records}")
-    
-    with col2:
-        if 'confidence_lower' in aggregated_data.columns and 'confidence_upper' in aggregated_data.columns:
-            valid_intervals = ((aggregated_data['confidence_lower'] <= aggregated_data['predicted_requests']) & 
-                             (aggregated_data['predicted_requests'] <= aggregated_data['confidence_upper'])).sum()
-            st.metric("Valid Confidence Intervals", f"{valid_intervals}/{total_records}")
-    
+
     # Detailed Data Table
     st.markdown("---")
-    st.subheader("📋 Detailed Predictions")
-    
+    st.subheader(f"📋 Detailed Predictions ({aggregation_level.title()} View)")
+
     # Display options for table
     col1, col2 = st.columns([3, 1])
-    with col2:
-        show_raw_data = st.checkbox("Show raw data", value=False)
-    
+    with col1:
+        show_raw_data = st.checkbox("Display daily data while in weekly or monthly view", value=False)
+
     if show_raw_data:
         display_data = filtered_data.copy()
         display_data['date'] = pd.to_datetime(display_data['date']).dt.strftime('%Y-%m-%d')
@@ -506,16 +517,37 @@ def main():
             use_container_width=True,
             hide_index=True
         )
-    
+
     # Download button
     csv_data = aggregated_data.to_csv(index=False)
     st.download_button(
-        label="Download Aggregated Data as CSV",
+        label="Download Data as CSV",
         data=csv_data,
         file_name=f"sf311_predictions_{aggregation_level}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
         mime="text/csv"
     )
     
+    # Geospatial Heatmap — independent of sidebar filters
+    st.markdown("---")
+    with st.spinner("Rendering geospatial heatmap..."):
+        try:
+            df_for_map = st.session_state.working_data.copy()
+            map_component.render_map_component(
+                df_for_map,
+                title=f"Heat Map — All Neighborhoods (Daily Only)",
+                key="sf311_main_map",  # namespaced state so it runs independently
+            )
+        except Exception as e:
+            st.error("Map failed to render.")
+            with st.expander("Details", expanded=False):
+                st.write(str(e))
+
+
+
+    
+    
+   
+
 
 
 if __name__ == "__main__":
