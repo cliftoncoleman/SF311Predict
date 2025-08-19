@@ -360,17 +360,42 @@ class SmartSF311Pipeline:
             # Get time series
             hist_values = nbhd_data['cases'].values
             
-            # Simple model selection (trend model as primary)
+            # Robust seasonal naive model (better for SF311 weekly patterns)
             try:
-                # Simple linear trend forecast
-                if len(hist_values) > 30:
-                    # Calculate simple trend
-                    recent_avg = np.mean(hist_values[-30:])
-                    trend_slope = (hist_values[-1] - hist_values[-30]) / 30
-                    forecast = [max(1, recent_avg + trend_slope * i) for i in range(prediction_days)]
+                # Use seasonal naive with weekly seasonality (much more stable)
+                if len(hist_values) >= 14:  # Need at least 2 weeks
+                    # Get the last 7 days pattern (weekly seasonality)
+                    last_week_pattern = hist_values[-7:]
+                    
+                    # Calculate a stable baseline using recent average (avoid outliers)
+                    recent_median = np.median(hist_values[-30:]) if len(hist_values) >= 30 else np.median(hist_values[-14:])
+                    
+                    # Apply gentle trend adjustment using median trend (more stable)
+                    if len(hist_values) >= 60:
+                        # Compare recent month vs. previous month medians
+                        recent_month = np.median(hist_values[-30:])
+                        prev_month = np.median(hist_values[-60:-30])
+                        trend_factor = max(0.8, min(1.2, recent_month / max(prev_month, 1)))  # Cap trend between 80%-120%
+                    else:
+                        trend_factor = 1.0
+                    
+                    # Generate forecast using weekly pattern with trend adjustment
+                    forecast = []
+                    for i in range(prediction_days):
+                        day_of_week_pattern = last_week_pattern[i % 7]
+                        # Apply trend factor gradually over time
+                        trend_adjustment = trend_factor ** (i / 30.0)  # Gradual trend application
+                        predicted_value = day_of_week_pattern * trend_adjustment
+                        
+                        # Ensure reasonable bounds (between 50% and 150% of recent median)
+                        min_val = max(1, recent_median * 0.5)
+                        max_val = recent_median * 1.5
+                        predicted_value = max(min_val, min(max_val, predicted_value))
+                        
+                        forecast.append(predicted_value)
                 else:
-                    # Use simple average if insufficient data
-                    avg_value = np.mean(hist_values)
+                    # Fallback for insufficient data
+                    avg_value = np.mean(hist_values[-7:]) if len(hist_values) >= 7 else np.mean(hist_values)
                     forecast = [max(1, avg_value)] * prediction_days
                 
                 # Create date range for predictions
